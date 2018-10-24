@@ -7,7 +7,7 @@ import earth
 
 #Choose the flavor & index you want
 flavor = 2  # 1,2,3 = e, mu, tau; negative sign for antiparticles
-gamma = 2.  # Power law index of isotropic flux E^-gamma
+gamma = 1.2  # Power law index of isotropic flux E^-gamma
 ReverseTime = False #You want to go backwards or forward? True for backwards, false for forward in time
 Efinal = 0.5e9 #If you're going backwards in time, set the final neutrino energy. The solution in this case returns a pdf
                # of neutrino energies that would give you Efinal, if propagated forwards. 
@@ -31,15 +31,19 @@ def get_att_value(w, v, ci, energy_nodes, zenith, E,phi_in):
         #print phisol
     else:
         phisol = np.dot(v, (ci * np.exp(w * t))) * energy_nodes**(-2) / phi_in #this is phi/phi_inital, i.e. the relative attenuation
-    return np.interp(logE, np.log10(energy_nodes), phisol)
+    return np.interp(logE, np.log10(energy_nodes), phisol), phisol
 
 
 #specify a zenith angle and energy you are interested in
-zenith = np.radians(120.) # zenith angle in radians
+zenith = 120. * 3.1415 / 180. # zenith angle in radians
 E = 100e3  #GeV
-att = get_att_value(w, v, ci, energy_nodes, zenith, E,energy_nodes**-gamma)
+att,phisol = get_att_value(w, v, ci, energy_nodes, zenith, E,energy_nodes**-gamma)
 
 print "Flux at E  =", E, " GeV , zenith = ", np.degrees(zenith), " degrees will be attenuated by a factor of ", att
+
+for i, e in enumerate(energy_nodes) :
+    print "%f, %e" % (np.log10(e), phisol[i])
+
 #done
 
 # The next section shows how to include secondary electron, muon neutrinos

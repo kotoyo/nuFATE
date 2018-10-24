@@ -3,7 +3,7 @@
 
 namespace nufate{
 
-nuFATE::nuFATE(int flavor, double gamma, std::string h5_filename, bool include_secondaries) : newflavor_(flavor), newgamma_(gamma), newh5_filename_(h5_filename), include_secondaries_(include_secondaries) {
+nuFATE::nuFATE(int flavor, double gamma, std::string h5_filename, bool include_secondaries) : newflavor_(flavor), newgamma_(gamma), pedestal_index_(2.0), newh5_filename_(h5_filename), include_secondaries_(include_secondaries) {
     //A few sanity checks
     if(include_secondaries_ and (newflavor_ == 3 or newflavor_== -3))
       throw std::runtime_error("nuFATE::nuFATE Cannot Include secondaries for tau's.");
@@ -28,11 +28,11 @@ nuFATE::nuFATE(int flavor, double gamma, std::string h5_filename, bool include_s
     // load cross sections from file
     LoadCrossSectionFromHDF5();
     // set the initial flux
-    SetInitialFlux();
+    setInitialPowerLawFlux(newgamma_, pedestal_index_);
 }
 
 nuFATE::nuFATE(int flavor, double gamma, std::vector<double> energy_nodes, std::vector<double> sigma_array, std::vector<std::vector<double>> dsigma_dE, bool include_secondaries):
-  newflavor_(flavor), newgamma_(gamma), energy_nodes_(energy_nodes), sigma_array_(sigma_array), include_secondaries_(include_secondaries)
+  newflavor_(flavor), newgamma_(gamma), pedestal_index_(2.0), energy_nodes_(energy_nodes), sigma_array_(sigma_array), include_secondaries_(include_secondaries)
 {
   NumNodes_ = energy_nodes_.size();
   Emax_ = energy_nodes_.back();
@@ -43,7 +43,7 @@ nuFATE::nuFATE(int flavor, double gamma, std::vector<double> energy_nodes, std::
     throw std::runtime_error("nuFATE::nuFATE Differential cross section array does not match energy nodes size.");
   AllocateMemoryForMembers(NumNodes_);
   SetEnergyBinWidths();
-  SetInitialFlux();
+  setInitialPowerLawFlux(newgamma_, pedestal_index_);
   SetCrossSectionsFromInput(dsigma_dE);
 }
 
@@ -330,18 +330,80 @@ void nuFATE::LoadCrossSectionFromHDF5(){
 
 }
 
-void nuFATE::SetInitialFlux(){
+void nuFATE::setInitialPowerLawFlux(double gamma, double pedestal_index){
+    initial_flux_set_ = false;
+    newgamma_ = gamma;
+    pedestal_index_ = pedestal_index;
+
     if(include_secondaries_){
-      phi_0_ = std::vector<double>(2*NumNodes_);
-      for (unsigned int i = 0; i < NumNodes_; i++){
-          phi_0_[i] = std::pow(energy_nodes_[i],(2.-newgamma_));
-          phi_0_[i+NumNodes_] = std::pow(energy_nodes_[i],(2.-newgamma_));
-      }
+
+        phi_0_ = std::vector<double>(2*NumNodes_);
+        for (unsigned int i = 0; i < NumNodes_; i++){
+            phi_0_[i] = std::pow(energy_nodes_[i],(pedestal_index_ - newgamma_));
+            phi_0_[i+NumNodes_] = phi_0_[i];
+        }
 
     } else {
         phi_0_ = std::vector<double>(NumNodes_);
         for (unsigned int i = 0; i < NumNodes_; i++){
-          phi_0_[i] = std::pow(energy_nodes_[i],(2.-newgamma_));
+          phi_0_[i] = std::pow(energy_nodes_[i],(pedestal_index_ - newgamma_));
+        }
+    }
+    initial_flux_set_ = true;
+}
+
+void nuFATE::setPedestalIndex(double pedestal_index) {
+
+    if (pedestal_index == pedestal_index_ &&
+        phi_0_pedestal_.size() > 0) {
+        // if pedestal flux is already calculated, just return.
+        return;
+    }
+
+    // Calculate pedestal flux. 
+    // That removes std::pow operation in setInitialFlux 
+    // function, which may speed up calculation a little
+    // when the setInitialFlux function is called in 
+    // for loop...
+    pedestal_index_ = pedestal_index;
+    if (include_secondaries_) {
+        phi_0_pedestal_ = std::vector<double>(2*NumNodes_);
+        for (unsigned int i = 0; i < NumNodes_; i++){
+            phi_0_pedestal_[i] = std::pow(energy_nodes_[i],pedestal_index_);
+            phi_0_pedestal_[i+NumNodes_] = phi_0_pedestal_[i];
+        }
+    } else {
+        phi_0_pedestal_ = std::vector<double>(NumNodes_);
+        for (unsigned int i = 0; i < NumNodes_; i++){
+            phi_0_pedestal_[i] = std::pow(energy_nodes_[i],pedestal_index_);
+        }
+    }
+}
+
+void nuFATE::setInitialFlux(const std::vector<double> &v, double pedestal_index){
+
+    initial_flux_set_ = false;
+
+    if (v.size() != NumNodes_) {
+        throw std::runtime_error("nuFATE::nuFATE number of energy nodes of input flux doesn't match with energy nodes of cross section.");
+    }
+
+    // size is OK. set phi_0_ vector.
+    // prepare pedestal flux.
+    setPedestalIndex(pedestal_index);
+
+    // For air fly 
+    if(include_secondaries_){
+        phi_0_ = std::vector<double>(2*NumNodes_);
+        for (unsigned int i = 0; i < NumNodes_; i++){
+            phi_0_[i] = v[i]*phi_0_pedestal_[i];
+            phi_0_[i+NumNodes_] = phi_0_[i];
+        }
+
+    } else {
+        phi_0_ = std::vector<double>(NumNodes_);
+        for (unsigned int i = 0; i < NumNodes_; i++){
+            phi_0_[i] = v[i]*phi_0_pedestal_[i];
         }
     }
 
@@ -566,6 +628,10 @@ int nuFATE::getFlavor() const {
 
 double nuFATE::getGamma() const {
     return newgamma_;
+}
+
+double nuFATE::getPedestalIndex() const {
+    return pedestal_index_;
 }
 
 std::string nuFATE::getFilename() const {

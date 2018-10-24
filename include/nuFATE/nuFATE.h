@@ -53,18 +53,27 @@ class nuFATE {
     const double REarth = 6371.;
     const double gR = s2t;
   private:
+    /// flavor index for input neutrino
     int newflavor_;
+    /// gamma index for input neutrino (for power law flux)
     double newgamma_;
+    /// pedestal power law index to make the input flux flat, default is 2.0
+    double pedestal_index_;
+    /// array of input neutrino flux in energy bins
+    /// size of the energy bins must be same as the size of
+    /// energy bins in cross section 
+    std::vector<double> input_flux_;
+    ///  name of h5 file for cross section
     std::string newh5_filename_;
   public:
     /// \brief Constructor
-    /// @param flv Position of the system.
+    /// @param flavor Position of the system.
     /// @param gamma spectral index of input flux.
     /// @param h5_filename name of hdf5 file containing the cross sections.
     /// @param include_secondaries if true secondaries are added to the flux propagation.
     nuFATE(int flv, double gamma, std::string h5_filename, bool include_secondaries);
     /// \brief Constructor
-    /// @param flv Position of the system.
+    /// @param flavor Position of the system.
     /// @param gamma spectral index of input flux.
     /// @param energy_nodes energy nodes in GeV.
     /// @param sigma_array total cross section at each energy node in cm^2.
@@ -80,17 +89,32 @@ class nuFATE {
     int getFlavor() const;
     /// \brief Function to get input spectral index
     double getGamma() const;
+    /// \brief Function to get pedestal power law index
+    double getPedestalIndex() const;
     /// \brief Function to get input filename
     std::string getFilename() const;
     /// \brief Function to get number of energy nodes
     double getNumNodes() const;
     /// \brief Function to toggle secondaries
+    const std::vector<double> &getEnergyNodes() const { return energy_nodes_; }
+    /// \brief Function to toggle secondaries
     void setAddSecondaries(bool opt) { add_secondary_term_ = opt;}
+    /// \brief Function to set initial power law flux
+    /// @param gamma gamma index of power law
+    /// @param pedestal_index power law index that makes power law spectrum flat. For example, if gamma index is close to 2.0, set 2.0 for pedestal_index.
+    void setInitialPowerLawFlux(double gamma, double pedestal_index);
+    /// \brief Function to set pedestal power law for input flux
+    /// @param pedestal_index power law index that makes input flux flat. If input flux is atmospheric flux, for example, set pedestal_index 3.7.
+    void setPedestalIndex(double pedestal_index);
+    /// \brief Function to set initial power law flux. 
+    /// @param v input energy flux at each energy node, must be same size as NumNodes_.
+    /// @param pedestal_index power law index that makes input flux flat. If input flux is atmospheric flux, for example, set pedestal_index 3.7.
+    void setInitialFlux(const std::vector<double> &v, double pedestal_index);
+
   protected:
     void AddAdditionalTerms();
     void LoadCrossSectionFromHDF5();
     void SetCrossSectionsFromInput(std::vector<std::vector<double>> dsigma_dE);
-    void SetInitialFlux();
     void set_glashow_total();
     void set_glashow_partial();
     void set_RHS_matrices(std::shared_ptr<double> RMatrix_, std::shared_ptr<double> dxs_array);
@@ -114,6 +138,7 @@ class nuFATE {
     std::vector<double> sigma_array_;
     std::vector<double> DeltaE_;
     std::vector<double> phi_0_;
+    std::vector<double> phi_0_pedestal_;
     std::vector<double> glashow_total_;
     std::vector<double> sig3_array_;
     std::shared_ptr<double> glashow_partial_;
