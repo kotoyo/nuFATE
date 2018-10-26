@@ -7,7 +7,7 @@ import earth
 
 #Choose the flavor & index you want
 flavor = 2  # 1,2,3 = e, mu, tau; negative sign for antiparticles
-gamma = 2.  # Power law index of isotropic flux E^-gamma
+gamma = 2.0  # Power law index of isotropic flux E^-gamma
 ReverseTime = False #You want to go backwards or forward? True for backwards, false for forward in time
 Efinal = 0.5e9 #If you're going backwards in time, set the final neutrino energy. The solution in this case returns a pdf
                # of neutrino energies that would give you Efinal, if propagated forwards. 
@@ -23,6 +23,9 @@ def get_att_value(w, v, ci, energy_nodes, zenith, E,phi_in):
     Na = 6.0221415e23
     logE = np.log10(E)
     t = earth.get_t_earth(zenith) * Na
+    print "t is ", t
+    #t = 6.59272246299e+33 * Na
+
     # g/ cm^2
     #    phi = np.dot(v,(ci*np.exp(w*t)))*energy_nodes**(-2) #this is the attenuated flux
     if(ReverseTime):
@@ -31,15 +34,25 @@ def get_att_value(w, v, ci, energy_nodes, zenith, E,phi_in):
         #print phisol
     else:
         phisol = np.dot(v, (ci * np.exp(w * t))) * energy_nodes**(-2) / phi_in #this is phi/phi_inital, i.e. the relative attenuation
-    return np.interp(logE, np.log10(energy_nodes), phisol)
+    return np.interp(logE, np.log10(energy_nodes), phisol), phisol
 
 
 #specify a zenith angle and energy you are interested in
-zenith = np.radians(120.) # zenith angle in radians
+#zenith = np.radians(120.) # zenith angle in radians
+zenith = 3.1415# zenith angle in radians
 E = 100e3  #GeV
-att = get_att_value(w, v, ci, energy_nodes, zenith, E,energy_nodes**-gamma)
+att,phisol = get_att_value(w, v, ci, energy_nodes, zenith, E,energy_nodes**-gamma)
 
 print "Flux at E  =", E, " GeV , zenith = ", np.degrees(zenith), " degrees will be attenuated by a factor of ", att
+
+data = ""
+for i, e in enumerate(energy_nodes) :
+    data += "%f, %e\n" % (np.log10(e), phisol[i])
+
+f = open("example_out1_python.txt","w")
+f.write(data)
+f.close()
+
 #done
 
 # The next section shows how to include secondary electron, muon neutrinos
@@ -49,7 +62,7 @@ w, v, ci, energy_nodes, phi_0 = csx.get_eigs(
 
 
 def get_att_value_secs(w, v, ci, energy_nodes, zenith, E):
-    Na = 6.022e23
+    Na = 6.0221415e23
     logE = np.log10(E)
     t = earth.get_t_earth(zenith) * Na
     # g/ cm^2

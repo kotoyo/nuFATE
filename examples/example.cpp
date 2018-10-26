@@ -1,4 +1,6 @@
 #include <iostream>
+#include <iomanip>
+#include <fstream>
 #include "nuFATE.h"
 
 
@@ -9,8 +11,8 @@ int main(){
  *  gamma: Spectral index of the incoming flux
  *  file: path to file containing the cross sections.
 */
-    int flavor = -2;
-    double gamma = 2.2;
+    int flavor = 2;
+    double gamma = 2.0;
     bool include_secondaries = false;
     std::string file = "../resources/NuFATECrossSections.h5";
     //Initialize an instance of the nuFATE class with these parameters.
@@ -29,9 +31,12 @@ int main(){
     std::vector<double> phi_0 = result.phi_0_;
     //Calculate earth column density for a given zenith
     double Na = 6.0221415e23;
-    double zenith = 2.2689280276;
+    //double zenith = 2.2689280276;
+    double zenith = 3.1415;
     double t;
     t = object.getEarthColumnDensity(zenith) * Na;
+    //t = 6.59272246299e33 * Na;
+    std::cerr << "t is " << t << std::endl;
 
     std::vector<double> abs;
     std::vector<double> phi_sol;
@@ -48,9 +53,13 @@ int main(){
       }
       //Print Solution
       std::cout << "Solution = " << std::endl;
+      std::ofstream fout;
+      fout.open("example_out1_cxx.txt", std::ios::out);
       for(int i =0; i<NumNodes; i++){
-        std::cout << phi_sol[i] << std::endl;
+        std::cout << std::fixed << std::setprecision(6) << log10(energy_nodes[i]) << ", " << std::scientific << std::setprecision(6) << phi_sol[i] << std::endl;
+        fout << std::fixed << std::setprecision(6) << log10(energy_nodes[i]) << ", " << std::scientific << std::setprecision(6) << phi_sol[i] << std::endl;
       }
+      fout.close();
 
     } else{
       //With Secondaries
