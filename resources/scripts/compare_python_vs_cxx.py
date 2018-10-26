@@ -35,5 +35,4 @@ ax[1].legend(loc="best")
 
 plt.savefig("python_vs_cxx.png")
 
-fig = plt.figure()
 
