@@ -184,8 +184,8 @@ void nuFATE::set_RHS_matrices(std::shared_ptr<double> RMatrix, std::shared_ptr<d
 
       for (unsigned int i=0; i<NumNodes_; i++){
         for(unsigned int j=i+1; j<NumNodes_; j++){
-          *(RHSMatrix1_.get()+i*NumNodes_+j) = DeltaE_[j-1] * *(dxs_array_.get()+j*NumNodes_+i) * std::pow(energy_nodes_[j],-1) * std::pow(energy_nodes_[i],2);
-          *(RHSMatrix4_.get()+i*NumNodes_+j) = DeltaE_[j-1] * (*(dxs_array_.get()+j*NumNodes_+i) + *(regen_array_.get()+j*NumNodes_+i)) * std::pow(energy_nodes_[j],-1) * std::pow(energy_nodes_[i],2);
+          *(RHSMatrix1_.get()+i*NumNodes_+j) = DeltaE_[j-1] * *(dxs_array_.get()+j*NumNodes_+i) * std::pow(energy_nodes_[j],-1) * std::pow(energy_nodes_[i],pedestal_index_);
+          *(RHSMatrix4_.get()+i*NumNodes_+j) = DeltaE_[j-1] * (*(dxs_array_.get()+j*NumNodes_+i) + *(regen_array_.get()+j*NumNodes_+i)) * std::pow(energy_nodes_[j],-1) * std::pow(energy_nodes_[i],pedestal_index_);
         }
       }
 
@@ -193,7 +193,7 @@ void nuFATE::set_RHS_matrices(std::shared_ptr<double> RMatrix, std::shared_ptr<d
         *(RHSMatrix1_.get()+i*NumNodes_+i) = *(RHSMatrix1_.get()+i*NumNodes_+i) - sigma_array_[i];
         *(RHSMatrix4_.get()+i*NumNodes_+i) = *(RHSMatrix4_.get()+i*NumNodes_+i) - sig3_array_[i];
         for(unsigned int j=i+1; j<NumNodes_; j++){
-          *(RHSMatrix2_.get()+i*NumNodes_+j) = DeltaE_[j-1] * *(sec_array_.get()+j*NumNodes_+i) * std::pow(energy_nodes_[j],-1) * std::pow(energy_nodes_[i],2);
+          *(RHSMatrix2_.get()+i*NumNodes_+j) = DeltaE_[j-1] * *(sec_array_.get()+j*NumNodes_+i) * std::pow(energy_nodes_[j],-1) * std::pow(energy_nodes_[i],pedestal_index_);
         }
       }
 
