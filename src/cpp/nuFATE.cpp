@@ -330,21 +330,38 @@ void nuFATE::LoadCrossSectionFromHDF5(){
 
 }
 
-void nuFATE::SetInitialFlux(){
-    if(include_secondaries_){
-      phi_0_ = std::vector<double>(2*NumNodes_);
-      for (unsigned int i = 0; i < NumNodes_; i++){
-          phi_0_[i] = std::pow(energy_nodes_[i],(2.-newgamma_));
-          phi_0_[i+NumNodes_] = std::pow(energy_nodes_[i],(2.-newgamma_));
-      }
+void nuFATE::SetInitialFlux(std::vector<double> flux) {
+    if (flux.size() == 0) {
+        // power law flux.
+
+        if(include_secondaries_){
+            phi_0_ = std::vector<double>(2*NumNodes_);
+            for (unsigned int i = 0; i < NumNodes_; i++) {
+                phi_0_[i] = std::pow(energy_nodes_[i],(2.-newgamma_));
+                phi_0_[i+NumNodes_] = phi_0_[i];
+            }
+
+        } else {
+            phi_0_ = std::vector<double>(NumNodes_);
+            for (unsigned int i = 0; i < NumNodes_; i++){
+                phi_0_[i] = std::pow(energy_nodes_[i],(2.-newgamma_));
+            }
+        }
 
     } else {
-        phi_0_ = std::vector<double>(NumNodes_);
-        for (unsigned int i = 0; i < NumNodes_; i++){
-          phi_0_[i] = std::pow(energy_nodes_[i],(2.-newgamma_));
+        if(include_secondaries_) {
+            phi_0_ = std::vector<double>(2*NumNodes_);
+            for (unsigned int i = 0; i < NumNodes_; i++){
+                phi_0_[i] = flux[i] * std::pow(energy_nodes_[i], 2.);
+                phi_0_[i+NumNodes_] = phi_0_[i];
+            }
+        } else {
+            phi_0_ = std::vector<double>(NumNodes_);
+            for (unsigned int i = 0; i < NumNodes_; i++){
+                phi_0_[i] = flux[i]*std::pow(energy_nodes_[i], 2.);
+            }
         }
     }
-
     initial_flux_set_ = true;
 }
 

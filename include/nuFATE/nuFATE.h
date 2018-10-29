@@ -86,11 +86,11 @@ class nuFATE {
     double getNumNodes() const;
     /// \brief Function to toggle secondaries
     void setAddSecondaries(bool opt) { add_secondary_term_ = opt;}
+    void SetInitialFlux(std::vector<double> fluxfile = std::vector<double>(0));
   protected:
     void AddAdditionalTerms();
     void LoadCrossSectionFromHDF5();
     void SetCrossSectionsFromInput(std::vector<std::vector<double>> dsigma_dE);
-    void SetInitialFlux();
     void set_glashow_total();
     void set_glashow_partial();
     void set_RHS_matrices(std::shared_ptr<double> RMatrix_, std::shared_ptr<double> dxs_array);

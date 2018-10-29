@@ -22,8 +22,8 @@ PATH_nuFATE=$(shell pwd)
 SOURCES = $(wildcard src/cpp/*.cpp)
 OBJECTS = $(patsubst src/cpp/%.cpp,build/%.o,$(SOURCES))
 
-EXAMPLES := examples/example
-
+EXAMPLES := examples/example examples/example2
+ 
 CXXFLAGS= -std=c++11 -g -Wall -Wextra -Wshadow -Werror
 
 # Directories
@@ -70,6 +70,10 @@ build/%.o : src/cpp/%.cpp
 examples/example: $(DYN_PRODUCT) examples/example.cpp
 	@echo Compiling example
 	@$(CXX) $(EXMAPLES_FLAGS) examples/example.cpp -lnuFATE $(LDFLAGS) -o $@
+
+examples/example2: $(DYN_PRODUCT) examples/example2.cpp
+	@echo Compiling example2
+	@$(CXX) $(EXMAPLES_FLAGS) examples/example2.cpp -lnuFATE $(LDFLAGS) -o $@
 
 .PHONY: install uninstall clean test docs
 clean:
