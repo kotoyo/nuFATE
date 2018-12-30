@@ -10,7 +10,7 @@ int main(){
  *  file: path to file containing the cross sections.
 */
     int flavor = -2;
-    double gamma = 1.2;
+    double gamma = 2.2;
     double pedestal_index = 2.0;
     bool include_secondaries = false;
     std::string file = "../resources/NuFATECrossSections.h5";
@@ -24,8 +24,8 @@ int main(){
     //
     // test 1 : replace input flux
     //
-    gamma = 3.65;
-    pedestal_index = 3.7;
+    //gamma = 3.65;
+    //pedestal_index = 3.7;
     // prepare input flux
     std::vector<double> initial_flux;
     const std::vector<double> &energies = object.getEnergyNodes();
