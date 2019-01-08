@@ -52,17 +52,129 @@ Finally the library can be installed using:
 	make install
 
 
-Example
--------
+How to use nuFATE
+--------------------------------------
 
-The one thing to remember is that the solution provided by nuFATE is phi_out = E^(pedestal_index) * phi. In other words, if you want to get arrival flux, you need to devide the answer with E^(pedestal_index).
+1) Get eigen values.
+^^^^^^^^^^^^^^^^^^^
+
+Following 5 parameters are required to calculate flux after propagation.
+
+        eval : 1D vector, right hand side matrix eigenvalues in unit of cm^2
+        evec : 2D vector, right hand side matrix normalized eigenvectors.
+        ci   : 1D vector, coordinates of the input spectrum in the eigensystem basis.
+        energy_nodes : 1D vector, array containing the energy nodes in GeV.
+        phi_0 : 1D vector, input_spectrum * pedestal_spectrum.
+
+The pedestal_spectrum must be chosen to make phi_0 to be flat. 
+
+For example, if input_spectrum is E^-2.2 (gamma is 2.2), pedestal_spectrum may be E^2.0 (pedestal_index = 2.0).
+
+### For C++
+
+```
+#include "nuFATE.h"
+
+....
+
+    // Instanciate object
+    int flavor = -2; 
+    double gamma = 2.2;
+    bool include_secondaries = false;
+    std::string file = "../resources/NuFATECrossSections.h5"; 
+
+    //Initialize an instance of the nuFATE class with these parameters.
+    nufate::nuFATE object(flavor, gamma, file, include_secondaries);
+
+    //Result is a class that stores the solution to the cascade equation.
+    nufate::Result result = object.getEigensystem();
+    std::vector<double> eval = result.eval;
+    std::shared_ptr<double> evec = result.evec;
+    std::vector<double> ci = result.ci;
+    std::vector<double> energy_nodes = result.energy_nodes_;
+    std::vector<double> phi_0 = result.phi_0_;
+```
+
+### For python
+
+```
+    import numpy as np
+    import cascade as cas
+    import earth
+
+    #Choose the flavor & index you want
+    flavor = 2  # 1,2,3 = e, mu, tau; negative sign for antiparticles
+    gamma = 1.2  # Power law index of isotropic flux E^-gamma
+    ReverseTime = False #You want to go backwards or forward? 
+    Efinal = 0.5e9   
+
+    xsecfile = "../../resources/NuFATECrossSections.h5"; 
+
+    #solve the cascade equation once
+    eval, evec, ci, energy_nodes, phi_0 = cas.get_eigs(flavor, gamma, xsecfile, ReverseTime, Efinal)
+```
+
+
+2) Calculate total number of targets
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+### for C++
+
+```
+    double Na = 6.0221415e23;
+    double zenith = 2.2689280276;
+    double t;
+    t = object.getEarthColumnDensity(zenith) * Na;
+```
+
+### for python
+
+```
+    Na = 6.0221415e23;
+    zenith = 2.2689280276;
+    t = earth.get_t_earth(zenith) * Na
+```
+
+3) Calculate flux after propagation.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Basically, all one need to calculate is the following equation.
+
+        phi_out = evec (dot) (ci * exp(eval * t)) 
+        
+        (dot) : inner product operator
+        t : total number of targets
+
+
+Note that this solution (phi_out) provided by nuFATE is :
+
+        phi_out = E^(pedestal_index) * phi. 
+        
+        where
+        phi : flux after propagation
+
+In other words, if you want to get phi, you need to devide the answer (phi_out) with E^(pedestal_index).
 
         phi = phi_out * E^(-pedestal_index)
 
-The pedestal_index must be chosen to make input flux close to be flat. 
-If input gamma index is 2.2, that means phi_initial = E^(-2.2), the pedestal_index may be 2.0. 
+Or, if you are interested in ratio of fluxes phi / phi_input, use
 
-The default pedestal_index is 2.0. 
+        phi_sol = evec (dot) (ci * exp(eval * t)) / phi_0
+
+then the pedestal_flux is cancelled out.
+
+For detailed coding, see examples.
+
+
+4) Reverse time propagation.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+nuFATE allows to calculate the propagation starting from arrival flux to input flux at Earth's surface.
+See example.py in src/python directory for details.
+
+
+Example
+-------
 
 The example script is called example.py. To run it do
 
