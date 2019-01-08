@@ -55,7 +55,7 @@ Finally the library can be installed using:
 How to use nuFATE
 --------------------------------------
 
-## 1) Get eigen values.
+### 1) Get eigen values.
 
 Following 5 parameters are required to calculate flux after propagation.
 
@@ -69,7 +69,7 @@ The pedestal_spectrum must be chosen to make phi_0 to be flat.
 
 For example, if input_spectrum is E^-2.2 (gamma is 2.2), pedestal_spectrum may be E^2.0 (pedestal_index = 2.0).
 
-### For C++
+#### For C++
 
 ```
 #include "nuFATE.h"
@@ -94,7 +94,7 @@ For example, if input_spectrum is E^-2.2 (gamma is 2.2), pedestal_spectrum may b
     std::vector<double> phi_0 = result.phi_0_;
 ```
 
-### For python
+#### For python
 
 ```
     import numpy as np
@@ -114,9 +114,9 @@ For example, if input_spectrum is E^-2.2 (gamma is 2.2), pedestal_spectrum may b
 ```
 
 
-## 2) Calculate total number of targets
+### 2) Calculate total number of targets
 
-### for C++
+#### for C++
 
 ```
     double Na = 6.0221415e23;
@@ -125,7 +125,7 @@ For example, if input_spectrum is E^-2.2 (gamma is 2.2), pedestal_spectrum may b
     t = object.getEarthColumnDensity(zenith) * Na;
 ```
 
-### for python
+#### for python
 
 ```
     Na = 6.0221415e23;
@@ -133,7 +133,7 @@ For example, if input_spectrum is E^-2.2 (gamma is 2.2), pedestal_spectrum may b
     t = earth.get_t_earth(zenith) * Na
 ```
 
-## 3) Calculate flux after propagation.
+### 3) Calculate flux after propagation.
 
 
 Basically, all one need to calculate is the following equation.
@@ -164,7 +164,7 @@ then the pedestal_flux is cancelled out.
 For detailed coding, see examples.
 
 
-## 4) Reverse time propagation.
+### 4) Reverse time propagation.
 
 nuFATE allows to calculate the propagation starting from arrival flux to input flux at Earth's surface.
 See example.py in src/python directory for details.
