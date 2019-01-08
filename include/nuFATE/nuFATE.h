@@ -3,6 +3,7 @@
 #include <math.h>
 #include <cmath>
 #include <memory>
+#include <iostream>
 
 #include "hdf5.h"
 #include "hdf5_hl.h"
@@ -26,15 +27,37 @@
 namespace nufate{
 
 ///\class Result
-///\brief Simple struct to hold the results
-struct Result {
+///\brief Simple class to hold the results
+class Result {
+  public :
    std::vector<double> eval;
    std::shared_ptr<double> evec;
    std::vector<double> ci;
    std::vector<double> energy_nodes_;
    std::vector<double> phi_0_;
-};
 
+   // for pybinding
+   std::vector<double> get_eval() { return eval; }
+   double              get_evec() { return *evec; }
+   std::vector<double> get_ci()   { return ci; }
+   std::vector<double> get_energy_nodes() { return energy_nodes_; }
+   std::vector<double> get_phi_0() { return phi_0_; }
+
+   // for debug
+   void Print() {
+      std::cout << "***** Result print *****"  << std::endl;
+      std::cout << "ci ---"  << std::endl;
+      for (unsigned int i=0; i<ci.size(); ++i) {
+          std::cout << ci[i] << " " ;
+      }
+      std::cout << std::endl;
+      std::cout << "energy_nodes ---"  << std::endl;
+      for (unsigned int i=0; i<energy_nodes_.size(); ++i) {
+          std::cout << energy_nodes_[i] << " ";
+      }
+      std::cout << std::endl;
+   }
+};
 
 ///\class nuFATE
 ///\brief nuFATE main class
