@@ -55,7 +55,14 @@ Finally the library can be installed using:
 Example
 -------
 
-The one thing to remember is that the solution provided by nuFATE is E^2 * phi
+The one thing to remember is that the solution provided by nuFATE is phi_out = E^(pedestal_index) * phi. In other words, if you want to get arrival flux, you need to devide the answer with E^(pedestal_index).
+
+        phi = phi_out * E^(-pedestal_index)
+
+The pedestal_index must be chosen to make input flux close to be flat. 
+If input gamma index is 2.2, that means phi_initial = E^(-2.2), the pedestal_index may be 2.0. 
+
+The default pedestal_index is 2.0. 
 
 The example script is called example.py. To run it do
 
