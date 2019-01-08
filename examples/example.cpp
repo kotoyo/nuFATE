@@ -23,9 +23,11 @@ int main(){
 
     //
     // test 1 : replace input flux
+    // To test user-defined input flux, activate this code.
     //
-    //gamma = 3.65;
-    //pedestal_index = 3.7;
+    /*
+    gamma = 3.65;
+    pedestal_index = 3.7;
     // prepare input flux
     std::vector<double> initial_flux;
     const std::vector<double> &energies = object.getEnergyNodes();
@@ -33,7 +35,7 @@ int main(){
         initial_flux.push_back(std::pow(energies[i], -gamma));
     }
     object.setInitialFlux(initial_flux, pedestal_index);
-    //
+    */
 
     //Result is a struct that stores the solution to the cascade equation.
     nufate::Result result;
@@ -47,7 +49,7 @@ int main(){
     std::vector<double> phi_0 = result.phi_0_;
     //Calculate earth column density for a given zenith
     double Na = 6.0221415e23;
-    double zenith = 120.*3.1415 / 180.;
+    double zenith = 2.2689280276;
     double t;
     t = object.getEarthColumnDensity(zenith) * Na;
 
