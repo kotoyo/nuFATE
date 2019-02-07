@@ -334,7 +334,7 @@ void nuFATE::LoadCrossSectionFromHDF5(){
 
 void nuFATE::setInitialPowerLawFlux(double gamma, double pedestal_index)
 {
-    if (newgamma_ == gamma && pedestal_index == pedestal_index_) {
+    if (newgamma_ == gamma && pedestal_index == pedestal_index_ && initial_flux_set_ == true) {
         // if fluxes are already calculated, just return.
         return;
     }
@@ -366,9 +366,11 @@ void nuFATE::setInitialPowerLawFlux(double gamma, double pedestal_index)
 
 void nuFATE::setPedestalIndex(double pedestal_index) {
 
-    if (pedestal_index == pedestal_index_) {
+    if (pedestal_index == pedestal_index_ && pedestal_flux_set_ == true) {
         return;
     }
+
+    pedestal_flux_set_ = false;
 
     // Calculate pedestal flux. 
     // That removes std::pow operation in setInitialFlux 
@@ -388,6 +390,7 @@ void nuFATE::setPedestalIndex(double pedestal_index) {
             phi_0_pedestal_[i] = std::pow(energy_nodes_[i],pedestal_index_);
         }
     }
+    pedestal_flux_set_ = true;
 }
 
 void nuFATE::setInitialFlux(const std::vector<double> &v, double pedestal_index)
