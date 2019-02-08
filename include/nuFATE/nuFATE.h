@@ -27,7 +27,7 @@
 namespace nufate{
 
 ///\class Result
-///\brief Simple class to hold the results
+///\brief Simple class to hold the results.
 class Result {
   public :
    std::vector<double> eval;          // eigen values
