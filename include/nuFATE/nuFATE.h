@@ -176,9 +176,9 @@ class nuFATE {
     /// @param pedestal_index power law index that makes input flux flat. If input flux is atmospheric flux, for example, set pedestal_index 3.7.
     void setPedestalIndex(double pedestal_index);
     /// \brief Function to set initial user-defined flux. 
-    /// @param v input energy flux at each energy node, must be same size as NumNodes_.
+    /// @param flux input energy flux at each energy node, must be same size as NumNodes_.
     /// @param pedestal_index power law index that makes input flux flat. If input flux is atmospheric flux, for example, set pedestal_index 3.7.
-    void setInitialFlux(const std::vector<double> &v, double pedestal_index);
+    void setInitialFlux(const std::vector<double> &flux, double pedestal_index);
 
   protected:
     void AddAdditionalTerms();

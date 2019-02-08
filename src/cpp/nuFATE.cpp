@@ -393,9 +393,9 @@ void nuFATE::setPedestalIndex(double pedestal_index) {
     pedestal_flux_set_ = true;
 }
 
-void nuFATE::setInitialFlux(const std::vector<double> &v, double pedestal_index)
+void nuFATE::setInitialFlux(const std::vector<double> &flux, double pedestal_index)
 {
-    if (v.size() != NumNodes_) {
+    if (flux.size() != NumNodes_) {
         throw std::runtime_error("nuFATE::nuFATE number of energy nodes of input flux doesn't match with energy nodes of cross section.");
     }
 
@@ -408,14 +408,14 @@ void nuFATE::setInitialFlux(const std::vector<double> &v, double pedestal_index)
     if(include_secondaries_){
         phi_0_ = std::vector<double>(2*NumNodes_);
         for (unsigned int i = 0; i < NumNodes_; i++){
-            phi_0_[i] = v[i]*phi_0_pedestal_[i];
+            phi_0_[i] = flux[i]*phi_0_pedestal_[i];
             phi_0_[i+NumNodes_] = phi_0_[i];
         }
 
     } else {
         phi_0_ = std::vector<double>(NumNodes_);
         for (unsigned int i = 0; i < NumNodes_; i++){
-            phi_0_[i] = v[i]*phi_0_pedestal_[i];
+            phi_0_[i] = flux[i]*phi_0_pedestal_[i];
         }
     }
 
