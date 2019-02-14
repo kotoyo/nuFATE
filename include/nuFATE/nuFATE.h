@@ -34,7 +34,7 @@ class Result {
    std::shared_ptr<double> evec;      // pointer to top address of eigen vectors
    std::vector<double> ci;            // coefficients
    std::vector<double> energy_nodes_; // energy nodes in GeV
-   std::vector<double> phi_0_;        // initial flux * E^(pedestal_gamma)
+   std::vector<double> phi_0_;        // initial flux * E^(scaling_gamma)
 
    //
    // functions below are not used by main nuFATE program,
@@ -53,7 +53,7 @@ class Result {
    /// @return 1D vector
    std::vector<double> get_energy_nodes() { return energy_nodes_; }
 
-   /// \brief getter for initial flux * E^(pedestal_gamma)
+   /// \brief getter for initial flux * E^(scaling_gamma)
    /// @return 1D vector
    std::vector<double> get_phi_0() { return phi_0_; }
 
@@ -126,8 +126,8 @@ class nuFATE {
     int newflavor_;
     /// gamma index for input neutrino (for power law flux)
     double newgamma_;
-    /// pedestal power law index to make the input flux flat, default is 2.0
-    double pedestal_index_;
+    /// scaling power law index to make the input flux flat, default is 2.0
+    double scaling_index_;
     /// array of input neutrino flux in energy bins
     /// size of the energy bins must be same as the size of
     /// energy bins in cross section 
@@ -149,6 +149,16 @@ class nuFATE {
     /// @param dsigma_dE square array of differential cross section in cm^2/GeV.
     /// @param include_secondaries if true secondaries are added to the flux propagation.
     nuFATE(int flv, double gamma, std::vector<double> energy_nodes, std::vector<double> sigma_array, std::vector<std::vector<double>> dsigma_dE, bool include_secondaries);
+
+    /// \brief Get phi_sol
+    /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
+    /// @return phi_sol
+    std::vector<double> getPhiSol(double number_of_targets);
+    /// \brief Calculate Relative Attenuation 
+    /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
+    /// @return attenuation factor (arrval_flux / initial_flux), 1D array in energy bins
+    std::vector<double> getRelativeAttenuation(double number_of_targets);
+
     /// \brief Eigensystem calculator
     Result getEigensystem();
     /// \brief Function to get Earth column density
@@ -158,8 +168,8 @@ class nuFATE {
     int getFlavor() const;
     /// \brief Function to get input spectral index
     double getGamma() const;
-    /// \brief Function to get pedestal power law index
-    double getPedestalIndex() const;
+    /// \brief Function to get scaling power law index
+    double getScalingIndex() const;
     /// \brief Function to get input filename
     std::string getFilename() const;
     /// \brief Function to get number of energy nodes
@@ -167,20 +177,23 @@ class nuFATE {
     /// \brief Function to toggle secondaries
     const std::vector<double> &getEnergyNodes() const { return energy_nodes_; }
     /// \brief Function to toggle secondaries
+
     void setAddSecondaries(bool opt) { add_secondary_term_ = opt;}
     /// \brief Function to set initial power law flux
     /// @param gamma gamma index of power law
-    /// @param pedestal_index power law index that makes power law spectrum flat. For example, if gamma index is close to 2.0, set 2.0 for pedestal_index.
-    void setInitialPowerLawFlux(double gamma, double pedestal_index);
-    /// \brief Function to set pedestal power law for input flux
-    /// @param pedestal_index power law index that makes input flux flat. If input flux is atmospheric flux, for example, set pedestal_index 3.7.
-    void setPedestalIndex(double pedestal_index);
+    /// @param scaling_index power law index that makes power law spectrum flat. For example, if gamma index is close to 2.0, set 2.0 for scaling_index.
+    void setInitialPowerLawFlux(double gamma, double scaling_index);
     /// \brief Function to set initial user-defined flux. 
     /// @param flux input energy flux at each energy node, must be same size as NumNodes_.
-    /// @param pedestal_index power law index that makes input flux flat. If input flux is atmospheric flux, for example, set pedestal_index 3.7.
-    void setInitialFlux(const std::vector<double> &flux, double pedestal_index);
+    /// @param scaling_index power law index that makes input flux flat. If input flux is atmospheric flux, for example, set scaling_index 3.7.
+    void setInitialFlux(const std::vector<double> &flux, double scaling_index);
 
   protected:
+    /// \brief Function to set scaling power law for input flux
+    /// if scaling index is changed, phi_0_ and RHS matrices need to be recalculated.
+    /// @param scaling_index power law index that makes input flux flat. If input flux is atmospheric flux, for example, set scaling_index 3.7.
+    void setScalingFlux(double scaling_index);
+ 
     void AddAdditionalTerms();
     void LoadCrossSectionFromHDF5();
     void SetCrossSectionsFromInput(std::vector<std::vector<double>> dsigma_dE);
@@ -207,7 +220,7 @@ class nuFATE {
     std::vector<double> sigma_array_;
     std::vector<double> DeltaE_;
     std::vector<double> phi_0_;
-    std::vector<double> phi_0_pedestal_;
+    std::vector<double> scaling_flux_;
     std::vector<double> glashow_total_;
     std::vector<double> sig3_array_;
     std::shared_ptr<double> glashow_partial_;
@@ -232,7 +245,7 @@ class nuFATE {
     bool include_secondaries_ = false;
     bool memory_allocated_ = false;
     bool initial_flux_set_ = false;
-    bool pedestal_flux_set_ = false;
+    bool scaling_flux_set_ = false;
     bool total_cross_section_set_ = false;
     bool differential_cross_section_set_ = false;
     bool RHS_set_ = false;
