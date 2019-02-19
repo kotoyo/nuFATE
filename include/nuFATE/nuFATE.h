@@ -26,6 +26,13 @@
 
 namespace nufate{
 
+// gamma index to scale up the initial flux.
+// phi_0_ = initial_flux * E^(SCALING_INDEX)
+// According to Aaron, the value 2.0 broadly works
+// most of physics use, including atmospheric neutrino
+// spectrum and E^-2.X astrophysical flux.
+static const double SCALING_INDEX = 2.0;
+
 ///\class Result
 ///\brief Simple class to hold the results.
 class Result {
@@ -126,12 +133,6 @@ class nuFATE {
     int newflavor_;
     /// gamma index for input neutrino (for power law flux)
     double newgamma_;
-    /// scaling power law index to make the input flux flat, default is 2.0
-    double scaling_index_;
-    /// array of input neutrino flux in energy bins
-    /// size of the energy bins must be same as the size of
-    /// energy bins in cross section 
-    std::vector<double> input_flux_;
     ///  name of h5 file for cross section
     std::string newh5_filename_;
   public:
@@ -150,10 +151,6 @@ class nuFATE {
     /// @param include_secondaries if true secondaries are added to the flux propagation.
     nuFATE(int flv, double gamma, std::vector<double> energy_nodes, std::vector<double> sigma_array, std::vector<std::vector<double>> dsigma_dE, bool include_secondaries);
 
-    /// \brief Get phi_sol
-    /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
-    /// @return phi_sol
-    std::vector<double> getPhiSol(double number_of_targets);
     /// \brief Calculate Relative Attenuation 
     /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
     /// @return attenuation factor (arrval_flux / initial_flux), 1D array in energy bins
@@ -168,8 +165,6 @@ class nuFATE {
     int getFlavor() const;
     /// \brief Function to get input spectral index
     double getGamma() const;
-    /// \brief Function to get scaling power law index
-    double getScalingIndex() const;
     /// \brief Function to get input filename
     std::string getFilename() const;
     /// \brief Function to get number of energy nodes
@@ -181,19 +176,19 @@ class nuFATE {
     void setAddSecondaries(bool opt) { add_secondary_term_ = opt;}
     /// \brief Function to set initial power law flux
     /// @param gamma gamma index of power law
-    /// @param scaling_index power law index that makes power law spectrum flat. For example, if gamma index is close to 2.0, set 2.0 for scaling_index.
-    void setInitialPowerLawFlux(double gamma, double scaling_index);
+    void setInitialPowerLawFlux(double gamma);
     /// \brief Function to set initial user-defined flux. 
     /// @param flux input energy flux at each energy node, must be same size as NumNodes_.
-    /// @param scaling_index power law index that makes input flux flat. If input flux is atmospheric flux, for example, set scaling_index 3.7.
-    void setInitialFlux(const std::vector<double> &flux, double scaling_index);
+    void setInitialFlux(const std::vector<double> &flux);
+    /// \brief Function to set scaling flux
+    /// Must be called before setInitialFlux or 
+    /// setInitialPowerLawFlux are called.
+    /// Do not modify the value unless you know well
+    /// about the parameter.
+    /// @param scaling_flux gamma factor of scaling flux
+    void setScalingFlux(double scaling_index);
 
   protected:
-    /// \brief Function to set scaling power law for input flux
-    /// if scaling index is changed, phi_0_ and RHS matrices need to be recalculated.
-    /// @param scaling_index power law index that makes input flux flat. If input flux is atmospheric flux, for example, set scaling_index 3.7.
-    void setScalingFlux(double scaling_index);
- 
     void AddAdditionalTerms();
     void LoadCrossSectionFromHDF5();
     void SetCrossSectionsFromInput(std::vector<std::vector<double>> dsigma_dE);
@@ -204,6 +199,7 @@ class nuFATE {
     double readDoubleAttribute(hid_t, std::string) const;
     unsigned int readUIntAttribute(hid_t, std::string) const;
     std::vector<double> logspace(double min,double max,unsigned int samples) const;
+
   private:
     void AllocateMemoryForMembers(unsigned int num_nodes);
     void SetEnergyBinWidths();
@@ -241,6 +237,19 @@ class nuFATE {
     std::shared_ptr<double> t1_;
     std::shared_ptr<double> t2_;
     std::shared_ptr<double> t3_;
+
+    // temporary buffers for eigensystem
+    gsl_vector_complex *eval_;
+    gsl_matrix_complex *evec_;
+    gsl_eigen_nonsymmv_workspace *w_;
+    gsl_vector *ci_;
+    gsl_permutation *p_;
+    gsl_matrix *V_;
+    Result r1_;
+
+    void allocate_gsl_buffers();
+    void free_gsl_buffers();
+
   private:
     bool include_secondaries_ = false;
     bool memory_allocated_ = false;
@@ -249,9 +258,12 @@ class nuFATE {
     bool total_cross_section_set_ = false;
     bool differential_cross_section_set_ = false;
     bool RHS_set_ = false;
+    bool eigenvalue_and_vector_set_ = false;
+    bool ci_set_ = false;
     bool add_tau_regeneration_ = true;
     bool add_glashow_term_= true;
     bool add_secondary_term_ = true;
+    double scaling_index_ = SCALING_INDEX; 
 };
 
 }

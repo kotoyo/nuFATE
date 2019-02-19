@@ -90,6 +90,9 @@ BOOST_PYTHON_MODULE(nuFATEpy)
     .def_readonly("gamma", &nuFATE::getGamma)
     .def_readonly("numnodes", &nuFATE::getNumNodes)
     .def("set_add_secondaries",&nuFATE::setAddSecondaries, arg("opt"))
+    .def("set_initial_power_law_flux",&nuFATE::setInitialPowerLawFlux, arg("gamma"))
+    .def("set_initial_flux",&nuFATE::setInitialFlux, arg("flux"))
+    .def("get_relative_attenuation",&nuFATE::getRelativeAttenuation, arg("number_of_targets"))
   ;
 
 }

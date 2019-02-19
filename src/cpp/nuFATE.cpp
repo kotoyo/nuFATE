@@ -5,7 +5,7 @@ namespace nufate{
 
 static double UNPHYSICAL_NUMBER = 1e-30;
 
-nuFATE::nuFATE(int flavor, double gamma, std::string h5_filename, bool include_secondaries) : newflavor_(flavor), newgamma_(gamma), scaling_index_(2.0), newh5_filename_(h5_filename), include_secondaries_(include_secondaries) {
+nuFATE::nuFATE(int flavor, double gamma, std::string h5_filename, bool include_secondaries) : newflavor_(flavor), newgamma_(gamma), newh5_filename_(h5_filename), include_secondaries_(include_secondaries) {
     //A few sanity checks
     if(include_secondaries_ and (newflavor_ == 3 or newflavor_== -3))
       throw std::runtime_error("nuFATE::nuFATE Cannot Include secondaries for tau's.");
@@ -30,11 +30,13 @@ nuFATE::nuFATE(int flavor, double gamma, std::string h5_filename, bool include_s
     // load cross sections from file
     LoadCrossSectionFromHDF5();
     // set the initial flux
-    setInitialPowerLawFlux(newgamma_, scaling_index_);
+    setInitialPowerLawFlux(newgamma_);
+    // allocate gsl buffers for evaluating eigenvalues
+    allocate_gsl_buffers();
 }
 
 nuFATE::nuFATE(int flavor, double gamma, std::vector<double> energy_nodes, std::vector<double> sigma_array, std::vector<std::vector<double>> dsigma_dE, bool include_secondaries):
-  newflavor_(flavor), newgamma_(gamma), scaling_index_(2.0), energy_nodes_(energy_nodes), sigma_array_(sigma_array), include_secondaries_(include_secondaries)
+  newflavor_(flavor), newgamma_(gamma), energy_nodes_(energy_nodes), sigma_array_(sigma_array), include_secondaries_(include_secondaries)
 {
   NumNodes_ = energy_nodes_.size();
   Emax_ = energy_nodes_.back();
@@ -45,8 +47,10 @@ nuFATE::nuFATE(int flavor, double gamma, std::vector<double> energy_nodes, std::
     throw std::runtime_error("nuFATE::nuFATE Differential cross section array does not match energy nodes size.");
   AllocateMemoryForMembers(NumNodes_);
   SetEnergyBinWidths();
-  setInitialPowerLawFlux(newgamma_, scaling_index_);
+  setInitialPowerLawFlux(newgamma_);
   SetCrossSectionsFromInput(dsigma_dE);
+  // allocate gsl buffers for evaluating eigenvalues
+  allocate_gsl_buffers();
 }
 
 void nuFATE::SetCrossSectionsFromInput(std::vector<std::vector<double>> dsigma_dE){
@@ -56,6 +60,9 @@ void nuFATE::SetCrossSectionsFromInput(std::vector<std::vector<double>> dsigma_d
     }
     total_cross_section_set_ = true;
     differential_cross_section_set_ = true;
+    // RHS matrices depends on cross sections and now
+    // need to be recalculated.
+    RHS_set_ = false;
 }
 
 void nuFATE::AllocateMemoryForMembers(unsigned int NumNodes){
@@ -173,6 +180,10 @@ void nuFATE::set_glashow_partial(){
 }
 
 void nuFATE::set_RHS_matrices(std::shared_ptr<double> RMatrix, std::shared_ptr<double> dxsarray) {
+
+    // make sure scaling_flux is set
+    setScalingFlux(scaling_index_);
+
     if(include_secondaries_){
       for(unsigned int i=0; i<NumNodes_; i++){
         for(unsigned int j=0; j<NumNodes_; j++){
@@ -186,9 +197,9 @@ void nuFATE::set_RHS_matrices(std::shared_ptr<double> RMatrix, std::shared_ptr<d
       for (unsigned int i=0; i<NumNodes_; i++){
         for(unsigned int j=i+1; j<NumNodes_; j++){
           // nue or numu NC
-          *(RHSMatrix1_.get()+i*NumNodes_+j) = DeltaE_[j-1] * *(dxs_array_.get()+j*NumNodes_+i) * std::pow(energy_nodes_[j],-1) * std::pow(energy_nodes_[i],scaling_index_);
+          *(RHSMatrix1_.get()+i*NumNodes_+j) = DeltaE_[j-1] * *(dxs_array_.get()+j*NumNodes_+i) * std::pow(energy_nodes_[j],-1) * scaling_flux_[i];
           // tau regen + tau NC
-          *(RHSMatrix4_.get()+i*NumNodes_+j) = DeltaE_[j-1] * (*(dxs_array_.get()+j*NumNodes_+i) + *(regen_array_.get()+j*NumNodes_+i)) * std::pow(energy_nodes_[j],-1) * std::pow(energy_nodes_[i],scaling_index_);
+          *(RHSMatrix4_.get()+i*NumNodes_+j) = DeltaE_[j-1] * (*(dxs_array_.get()+j*NumNodes_+i) + *(regen_array_.get()+j*NumNodes_+i)) * std::pow(energy_nodes_[j],-1) * scaling_flux_[i];
         }
       }
 
@@ -197,7 +208,7 @@ void nuFATE::set_RHS_matrices(std::shared_ptr<double> RMatrix, std::shared_ptr<d
         *(RHSMatrix4_.get()+i*NumNodes_+i) = *(RHSMatrix4_.get()+i*NumNodes_+i) - sig3_array_[i];
         for(unsigned int j=i+1; j<NumNodes_; j++){
           // nue/mu production
-          *(RHSMatrix2_.get()+i*NumNodes_+j) = DeltaE_[j-1] * *(sec_array_.get()+j*NumNodes_+i) * std::pow(energy_nodes_[j],-1) * std::pow(energy_nodes_[i],scaling_index_);
+          *(RHSMatrix2_.get()+i*NumNodes_+j) = DeltaE_[j-1] * *(sec_array_.get()+j*NumNodes_+i) * std::pow(energy_nodes_[j],-1) * scaling_flux_[i];
         }
       }
 
@@ -217,7 +228,7 @@ void nuFATE::set_RHS_matrices(std::shared_ptr<double> RMatrix, std::shared_ptr<d
       for(unsigned int i = 0; i < NumNodes_; i++){
         for(unsigned int j= i+1; j < NumNodes_; j++){
           double e1 = 1./ energy_nodes_[j];
-          double e2 = std::pow(energy_nodes_[i], scaling_index_);
+          double e2 = scaling_flux_[i];
           *(RMatrix.get()+i*NumNodes_+j) = DeltaE_[j - 1] * *(dxsarray.get()+j * dxsdim_[1]+i) * e1 * e2;
         }
       }
@@ -336,59 +347,46 @@ void nuFATE::LoadCrossSectionFromHDF5(){
    RHS_set_ = false;
 }
 
-std::vector<double> nuFATE::getPhiSol(double number_of_targets) 
+std::vector<double> nuFATE::getRelativeAttenuation(double number_of_targets) 
 {
    // calculate eigensystem first
-   Result result = getEigensystem();
-   const std::vector<double> &eval = result.eval;
-   std::shared_ptr<double> evec = result.evec;
-   const std::vector<double> &ci = result.ci;
-   const std::vector<double> &phi_0 = result.phi_0_;
+   getEigensystem();
    double t = number_of_targets;
-
    std::vector<double> phi_sol;
 
-   double abs;
    unsigned int rsize = NumNodes_; 
    if (include_secondaries_) {
       rsize = 2*NumNodes_;
    }
+   phi_sol.resize(rsize);
 
+   double abs;
    for (unsigned int i=0; i<rsize; i++){
       double sum = 0.;
       for (unsigned int j=0; j<rsize; j++){
-         abs = ci[j] * exp(-t*eval[j]);
+         abs = r1_.ci[j] * exp(-t * r1_.eval[j]);
          // phi_0_ = initial_flux * scaling_flux
          // arrval_flux = abs (dot) eigenvec / scaling_flux 
          // attenuation = arrival_flux / initial_flux = abs (dot) eigenvec / (scaling_flux*initial_flux) 
-         sum += abs *  *(evec.get()+i*rsize+j);
+         sum += abs *  *((r1_.evec).get()+i*rsize+j);
       }
-      phi_sol.push_back(sum / phi_0[i]);
+      phi_sol[i] = sum / r1_.phi_0_[i];
    }
    return phi_sol;
 }
 
-std::vector<double> nuFATE::getRelativeAttenuation(double number_of_targets) 
+void nuFATE::setInitialPowerLawFlux(double gamma)
 {
-   if (! include_secondaries_) return getPhiSol(number_of_tergets);
-   
-
-}
-
-void nuFATE::setInitialPowerLawFlux(double gamma, double scaling_index)
-{
-    if (newgamma_ == gamma && scaling_index == scaling_index_ && initial_flux_set_ == true) {
+    if (newgamma_ == gamma && initial_flux_set_ == true) {
         // if fluxes are already calculated, just return.
         return;
     }
     
     initial_flux_set_ = false;
     newgamma_ = gamma;
-    scaling_index_ = scaling_index;
 
     // calculate scaling flux first.
-    // scaling_flux_ is filled if needed.
-    setScalingFlux(scaling_index);
+    setScalingFlux(scaling_index_);
 
     if(include_secondaries_){
 
@@ -409,18 +407,18 @@ void nuFATE::setInitialPowerLawFlux(double gamma, double scaling_index)
 
 void nuFATE::setScalingFlux(double scaling_index) {
 
-    if (scaling_index == scaling_index_ && scaling_flux_set_ == true) {
+    if (scaling_flux_set_ == true && scaling_index_ == scaling_index) {
         return;
     }
 
     scaling_flux_set_ = false;
+    scaling_index_ = scaling_index;
 
     // Calculate scaling flux. 
     // That removes std::pow operation in setInitialFlux 
     // function, which may speed up calculation a little
     // when the setInitialFlux function is called in 
     // for_loop...
-    scaling_index_ = scaling_index;
     if (include_secondaries_) {
         scaling_flux_ = std::vector<double>(2*NumNodes_);
         for (unsigned int i = 0; i < NumNodes_; i++){
@@ -433,14 +431,14 @@ void nuFATE::setScalingFlux(double scaling_index) {
             scaling_flux_[i] = std::pow(energy_nodes_[i],scaling_index_);
         }
     }
-    scaling_flux_set_ = true;
 
-    // RHS matrices depends on scaling flux and now
-    // need to be recalculated.
+    // RHS matrices depends on scaling flux. Reset flag.
     RHS_set_ = false;
+
+    scaling_flux_set_ = true;
 }
 
-void nuFATE::setInitialFlux(const std::vector<double> &flux, double scaling_index)
+void nuFATE::setInitialFlux(const std::vector<double> &flux)
 {
     if (flux.size() != NumNodes_) {
         throw std::runtime_error("nuFATE::nuFATE number of energy nodes of input flux doesn't match with energy nodes of cross section.");
@@ -450,7 +448,7 @@ void nuFATE::setInitialFlux(const std::vector<double> &flux, double scaling_inde
 
     // size is OK. set phi_0_ vector.
     // prepare scaling flux.
-    setScalingFlux(scaling_index);
+    setScalingFlux(scaling_index_);
 
     if(include_secondaries_){
         phi_0_ = std::vector<double>(2*NumNodes_);
@@ -469,7 +467,11 @@ void nuFATE::setInitialFlux(const std::vector<double> &flux, double scaling_inde
     // set unphysical number to newgamma_ to avoid to be used for analysis
     newgamma_ = UNPHYSICAL_NUMBER;
 
+    // ci depends on initial flux. reset flag.
+    ci_set_ = false;
+
     initial_flux_set_ = true;
+
 }
 
 void nuFATE::AddAdditionalTerms(){
@@ -534,6 +536,30 @@ void nuFATE::AddAdditionalTerms(){
     }
 }
 
+void nuFATE::allocate_gsl_buffers() 
+{
+   unsigned int msize = NumNodes_;
+   if(include_secondaries_){
+       msize = 2*NumNodes_;
+   }
+   eval_ = gsl_vector_complex_alloc (msize);
+   evec_ = gsl_matrix_complex_alloc (msize, msize);
+   w_    = gsl_eigen_nonsymmv_alloc (msize);
+   ci_   = gsl_vector_alloc(msize);
+   p_    = gsl_permutation_alloc(msize);
+   V_    = gsl_matrix_alloc (msize,msize);
+}
+
+void nuFATE::free_gsl_buffers() 
+{
+   gsl_vector_complex_free(eval_);
+   gsl_matrix_complex_free(evec_);
+   gsl_eigen_nonsymmv_free(w_);
+   gsl_vector_free(ci_);
+   gsl_permutation_free (p_);
+   gsl_matrix_free(V_);
+}
+
 Result nuFATE::getEigensystem(){
     if(not initial_flux_set_)
       throw std::runtime_error("nuFATE::getEigensystem initial flux not set.");
@@ -547,80 +573,107 @@ Result nuFATE::getEigensystem(){
     // 1. Cross Sections
     // 2. Energy Nodes
     // 3. Scaling Flux
+    // and does not depend on the initial flux.
     // Because AddAdditionalTerms function calls file
     // open, calculate RHS matrices only when any of
-    // dependency requires to recalculate it.
+    // above is touched.
     if (RHS_set_ == false) {
-      set_RHS_matrices(RHSMatrix_, dxs_array_);
-      if (add_secondary_term_) {
-        AddAdditionalTerms();
-      }
-      RHS_set_ = true;
-    }
+       set_RHS_matrices(RHSMatrix_, dxs_array_);
+       if (add_secondary_term_) {
+          AddAdditionalTerms();
+       }
 
-    if(not include_secondaries_){
-      for (unsigned int i = 0; i < NumNodes_; i++){
-        *(RHSMatrix_.get()+i*NumNodes_+i) = *(RHSMatrix_.get()+i*NumNodes_+i) - sigma_array_[i];
-      }
+       if(not include_secondaries_){
+          for (unsigned int i = 0; i < NumNodes_; i++){
+             *(RHSMatrix_.get()+i*NumNodes_+i) = *(RHSMatrix_.get()+i*NumNodes_+i) - sigma_array_[i];
+          }
+       }
+       RHS_set_ = true;
+
+       // once RHSMatrix is modified, eigenvalues and
+       // eigenvectors need to be recalculated.
+       eigenvalue_and_vector_set_ = false;
     }
 
     unsigned int msize;
     if(include_secondaries_){
-      msize = 2*NumNodes_;
+       msize = 2*NumNodes_;
     } else{
-        msize = NumNodes_;
+       msize = NumNodes_;
     }
 
-    gsl_matrix_view m = gsl_matrix_view_array(RHSMatrix_.get(), msize, msize);
-    gsl_vector_complex *eval = gsl_vector_complex_alloc (msize);
-    gsl_matrix_complex *evec = gsl_matrix_complex_alloc (msize, msize);
-    gsl_eigen_nonsymmv_workspace * w = gsl_eigen_nonsymmv_alloc (msize);
-    gsl_eigen_nonsymmv (&m.matrix, eval, evec, w);
-    gsl_eigen_nonsymmv_sort(eval, evec,GSL_EIGEN_SORT_ABS_ASC);
+    // Among 5 parameters of Result class, 
+    // eigenvector and eigenvalues depends on RHSMatrix
+    // and energynodes only. Separate the calculation 
+    // from solving ci.
+    if (eigenvalue_and_vector_set_ == false) {
 
-    int s;
-    gsl_vector *ci = gsl_vector_alloc(msize);
-    gsl_permutation *p = gsl_permutation_alloc(msize);
-    gsl_vector_view b = gsl_vector_view_array (&phi_0_.front(), msize);
-    gsl_matrix *V = gsl_matrix_alloc (msize,msize);
+       // copy energy_nodes to result
+       r1_.energy_nodes_ = energy_nodes_;
 
-    std::shared_ptr<double> evec_out = std::shared_ptr<double>((double *)malloc(msize*msize*sizeof(double)),free);
+       // copy RHSMatrix to gsl matrix
+       gsl_matrix_view m = gsl_matrix_view_array(RHSMatrix_.get(), msize, msize);
 
-    for(unsigned int i = 0; i<msize;i++){
-       for(unsigned int j=0; j<msize;j++){
-           gsl_vector_complex_view evec_i = gsl_matrix_complex_column (evec, j);
-           gsl_complex z = gsl_vector_complex_get(&evec_i.vector, i);
-           double value = GSL_REAL(z);
-           gsl_matrix_set(V , i, j, value);
-           *(evec_out.get() + i * msize + j) = value;
-        }
+       // calculate eigenvalues and right eivenvectors of 
+       // matrix m
+       gsl_eigen_nonsymmv (&m.matrix, eval_, evec_, w_);
+
+       // sort eigenvalues and corresponding eigenvectors
+       // in ascending order of magnitude
+       gsl_eigen_nonsymmv_sort(eval_, evec_, GSL_EIGEN_SORT_ABS_ASC);
+
+       // prepare buffer for eigenvectors
+       r1_.evec = std::shared_ptr<double>((double *)malloc(msize*msize*sizeof(double)),free);
+
+       r1_.eval.resize(msize);
+       for(unsigned int i = 0; i<msize;i++){
+          // copy eigenvalues to result
+          gsl_complex eval_i
+              = gsl_vector_complex_get(eval_, i);
+          r1_.eval[i] = gsl_complex_abs(eval_i);
+ 
+          // copy eigenvectors to result
+          for(unsigned int j=0; j<msize;j++){
+              gsl_vector_complex_view evec_i = gsl_matrix_complex_column(evec_, j);
+              gsl_complex z = gsl_vector_complex_get(&evec_i.vector, i);
+              double value = GSL_REAL(z);
+              gsl_matrix_set(V_ , i, j, value);
+              *(r1_.evec.get() + i * msize + j) = value;
+          }
+       }
+
+       // factorize matrix V into the LU decomposition
+       // PA = LU, V will be updated
+       int s;
+       gsl_linalg_LU_decomp(V_, p_, &s);
+
+       eigenvalue_and_vector_set_ = true;
     }
-    gsl_linalg_LU_decomp (V, p, &s);
-    gsl_linalg_LU_solve (V, p, &b.vector, ci);
 
-    std::vector<double> CI;
-    std::vector<double> EVAL;
+    if (ci_set_ == false) {
 
-    for(unsigned int i = 0; i<msize;i++){
-       double newval = gsl_vector_get(ci, i);
-       CI.push_back(newval);
-       gsl_complex eval_i
-                      = gsl_vector_complex_get (eval, i);
-       EVAL.push_back(gsl_complex_abs(eval_i));
-    }
-    //free unneeded memory
-    gsl_permutation_free (p);
-    gsl_eigen_nonsymmv_free (w);
+       // copy phi_0_ to gsl vector
+       gsl_vector_view b = gsl_vector_view_array(&phi_0_.front(), msize);
 
-    class Result r1;
-    r1.eval = EVAL;
-    r1.evec = evec_out;
-    r1.ci = CI;
-    r1.energy_nodes_ = energy_nodes_;
-    r1.phi_0_ = phi_0_;
+       // solve the square system Ax = b using the LU
+       // decomposition of V into (LU, p) given by 
+       // gsl_linalg_LU_decomp
+       gsl_linalg_LU_solve(V_, p_, &b.vector, ci_);
 
-    return r1;
-   }
+       // copy phi_0_ and ci to result
+       r1_.phi_0_ = phi_0_;
+       r1_.ci.resize(msize);
+       for (unsigned int i = 0; i<msize;i++) {
+           double newval = gsl_vector_get(ci_, i);
+           r1_.ci[i] = newval;
+       }
+
+       // done!
+       ci_set_ = true;
+    } 
+
+    return r1_;
+}
 
 struct rho_earth_params{double theta;};
 
@@ -704,10 +757,6 @@ double nuFATE::getGamma() const {
         std::cout << "You set user-defined input function. Gamma " << newgamma_ << " is unphysical." << std::endl;
     }
     return newgamma_;
-}
-
-double nuFATE::getScalingIndex() const {
-    return scaling_index_;
 }
 
 std::string nuFATE::getFilename() const {
