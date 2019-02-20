@@ -3,7 +3,7 @@
 
 namespace nufate{
 
-static double UNPHYSICAL_NUMBER = 1e-30;
+static double UNPHYSICAL_VALUE = 1e30;
 
 nuFATE::nuFATE(int flavor, double gamma, std::string h5_filename, bool include_secondaries) : newflavor_(flavor), newgamma_(gamma), newh5_filename_(h5_filename), include_secondaries_(include_secondaries) {
     //A few sanity checks
@@ -465,7 +465,7 @@ void nuFATE::setInitialFlux(const std::vector<double> &flux)
     }
 
     // set unphysical number to newgamma_ to avoid to be used for analysis
-    newgamma_ = UNPHYSICAL_NUMBER;
+    newgamma_ = UNPHYSICAL_VALUE;
 
     // ci depends on initial flux. reset flag.
     ci_set_ = false;
@@ -753,7 +753,7 @@ int nuFATE::getFlavor() const {
 }
 
 double nuFATE::getGamma() const {
-    if (newgamma_ == UNPHYSICAL_NUMBER) {
+    if (newgamma_ == UNPHYSICAL_VALUE) {
         std::cout << "You set user-defined input function. Gamma " << newgamma_ << " is unphysical." << std::endl;
     }
     return newgamma_;

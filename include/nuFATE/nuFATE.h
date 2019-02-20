@@ -169,8 +169,8 @@ class nuFATE {
     std::string getFilename() const;
     /// \brief Function to get number of energy nodes
     double getNumNodes() const;
-    /// \brief Function to toggle secondaries
-    const std::vector<double> &getEnergyNodes() const { return energy_nodes_; }
+    /// \brief Function to get energy nodes
+    std::vector<double> getEnergyNodes() const { return energy_nodes_; }
     /// \brief Function to toggle secondaries
 
     void setAddSecondaries(bool opt) { add_secondary_term_ = opt;}

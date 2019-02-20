@@ -2,6 +2,8 @@
 import nuFATEpy as nuf
 import numpy as np
 import sys
+import time
+import math as m
 
 flavor_id = 2
 gamma_index = 2.2
@@ -15,16 +17,43 @@ print "generate nuFATE"
 
 # do speed test.
 
-ntrials = 10000
+start = time.time()
+
+ntrials = 1000
 deltas = np.random.rand(ntrials)
 earth_t = nufate.get_earth_column_density(zenith)
 
 for i in range(ntrials) :
-   nufate.set_initial_power_law_flux(2.0 + deltas[i]);
+   nufate.set_initial_power_law_flux(2.0 + deltas[i])
    att = nufate.get_relative_attenuation(earth_t)
-   
 
-print "done!"
+end = time.time()
+
+print "test1, prosess time was ", end - start
+
+energy_nodes = np.array(nufate.energy_nodes())
+unitvec = np.ones(len(energy_nodes))
+dummy_initial_flux = np.power(energy_nodes, -2.2*unitvec);
+
+start2 = time.time()
+for i in range(ntrials) :
+   nufate.set_initial_flux(dummy_initial_flux * np.power(energy_nodes, deltas[i]*unitvec))
+   att = nufate.get_relative_attenuation(earth_t)
+
+end2 = time.time();
+
+print "test2, prosess time was ", end2- start2
+
+for i in range(ntrials) :
+   nufate.set_initial_power_law_flux(2.0 + deltas[i])
+   att = nufate.get_relative_attenuation(earth_t)
+   print att
+
+for i in range(ntrials) :
+   nufate.set_initial_flux(dummy_initial_flux * np.power(energy_nodes, deltas[i]*unitvec))
+   att = nufate.get_relative_attenuation(earth_t)
+   print att
+
 
 
 
