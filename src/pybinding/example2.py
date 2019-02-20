@@ -15,14 +15,17 @@ nufate = nuf.nuFATE(flavor_id, gamma_index, h5_filename, include_secondaries)
 
 print "generate nuFATE"
 
-# do speed test.
-
-start = time.time()
-
 ntrials = 1000
+Na = 6.0221415e23
 deltas = np.random.rand(ntrials)
-earth_t = nufate.get_earth_column_density(zenith)
+earth_t = nufate.get_earth_column_density(zenith) * Na
 
+print nufate.energy_nodes()
+att = nufate.get_relative_attenuation(earth_t)
+print att
+
+# do speed test.
+start = time.time()
 for i in range(ntrials) :
    nufate.set_initial_power_law_flux(2.0 + deltas[i])
    att = nufate.get_relative_attenuation(earth_t)
@@ -53,7 +56,4 @@ for i in range(ntrials) :
    nufate.set_initial_flux(dummy_initial_flux * np.power(energy_nodes, deltas[i]*unitvec))
    att = nufate.get_relative_attenuation(earth_t)
    print att
-
-
-
 
