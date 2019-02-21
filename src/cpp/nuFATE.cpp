@@ -375,36 +375,6 @@ std::vector<double> nuFATE::getRelativeAttenuation(double number_of_targets)
    return phi_sol;
 }
 
-void nuFATE::setInitialPowerLawFlux(double gamma)
-{
-    if (newgamma_ == gamma && initial_flux_set_ == true) {
-        // if fluxes are already calculated, just return.
-        return;
-    }
-    
-    initial_flux_set_ = false;
-    newgamma_ = gamma;
-
-    // calculate scaling flux first.
-    setScalingFlux(scaling_index_);
-
-    if(include_secondaries_){
-
-        phi_0_ = std::vector<double>(2*NumNodes_);
-        for (unsigned int i = 0; i < NumNodes_; i++){
-            phi_0_[i] = std::pow(energy_nodes_[i],- newgamma_) * scaling_flux_[i] ;
-            phi_0_[i+NumNodes_] = phi_0_[i];
-        }
-
-    } else {
-        phi_0_ = std::vector<double>(NumNodes_);
-        for (unsigned int i = 0; i < NumNodes_; i++){
-          phi_0_[i] = std::pow(energy_nodes_[i],- newgamma_) * scaling_flux_[i];
-        }
-    }
-    initial_flux_set_ = true;
-}
-
 void nuFATE::setScalingFlux(double scaling_index) {
 
     if (scaling_flux_set_ == true && scaling_index_ == scaling_index) {
@@ -436,6 +406,40 @@ void nuFATE::setScalingFlux(double scaling_index) {
     RHS_set_ = false;
 
     scaling_flux_set_ = true;
+}
+
+void nuFATE::setInitialPowerLawFlux(double gamma)
+{
+    if (newgamma_ == gamma && initial_flux_set_ == true) {
+        // if fluxes are already calculated, just return.
+        return;
+    }
+    
+    initial_flux_set_ = false;
+    newgamma_ = gamma;
+
+    // calculate scaling flux first.
+    setScalingFlux(scaling_index_);
+
+    if(include_secondaries_){
+
+        phi_0_ = std::vector<double>(2*NumNodes_);
+        for (unsigned int i = 0; i < NumNodes_; i++){
+            phi_0_[i] = std::pow(energy_nodes_[i], -newgamma_) * scaling_flux_[i] ;
+            phi_0_[i+NumNodes_] = phi_0_[i];
+        }
+
+    } else {
+        phi_0_ = std::vector<double>(NumNodes_);
+        for (unsigned int i = 0; i < NumNodes_; i++){
+          phi_0_[i] = std::pow(energy_nodes_[i],- newgamma_) * scaling_flux_[i];
+        }
+    }
+
+    // ci depends on initial flux. reset flag.
+    ci_set_ = false;
+
+    initial_flux_set_ = true;
 }
 
 void nuFATE::setInitialFlux(const std::vector<double> &flux)
