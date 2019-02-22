@@ -147,13 +147,13 @@ class nuFATE {
     /// @param gamma spectral index of input flux.
     /// @param energy_nodes energy nodes in GeV.
     /// @param sigma_array total cross section at each energy node in cm^2.
-    /// @param dsigma_dE square array of differential cross section in cm^2/GeV.
+    /// @param dsigma_dE square array of differential cross section for neutral-current interaction in cm^2/GeV.
     /// @param include_secondaries if true secondaries are added to the flux propagation.
     nuFATE(int flv, double gamma, std::vector<double> energy_nodes, std::vector<double> sigma_array, std::vector<std::vector<double>> dsigma_dE, bool include_secondaries);
 
     /// \brief Calculate Relative Attenuation 
     /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
-    /// @return attenuation factor (arrval_flux / initial_flux), 1D array in energy bins
+    /// @return attenuation factor (arrival_flux / initial_flux), 1D array in energy bins
     std::vector<double> getRelativeAttenuation(double number_of_targets);
 
     /// \brief Eigensystem calculator
@@ -191,7 +191,7 @@ class nuFATE {
   protected:
     void AddAdditionalTerms();
     void LoadCrossSectionFromHDF5();
-    void SetCrossSectionsFromInput(std::vector<std::vector<double>> dsigma_dE);
+    void SetNCDifferentialCrossSectionsFromInput(std::vector<std::vector<double>> dsigma_dE);
     void set_glashow_total();
     void set_glashow_partial();
     void set_RHS_matrices(std::shared_ptr<double> RMatrix_, std::shared_ptr<double> dxs_array);

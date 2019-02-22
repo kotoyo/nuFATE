@@ -48,17 +48,17 @@ nuFATE::nuFATE(int flavor, double gamma, std::vector<double> energy_nodes, std::
   AllocateMemoryForMembers(NumNodes_);
   SetEnergyBinWidths();
   setInitialPowerLawFlux(newgamma_);
-  SetCrossSectionsFromInput(dsigma_dE);
+  SetNCDifferentialCrossSectionsFromInput(dsigma_dE);
+  total_cross_section_set_ = true;
   // allocate gsl buffers for evaluating eigenvalues
   allocate_gsl_buffers();
 }
 
-void nuFATE::SetCrossSectionsFromInput(std::vector<std::vector<double>> dsigma_dE){
+void nuFATE::SetNCDifferentialCrossSectionsFromInput(std::vector<std::vector<double>> dsigma_dE){
     for(unsigned int i = 0; i<NumNodes_; i++){
         for(unsigned int j=0; j<NumNodes_; j++)
         *(dxs_array_.get()+i*NumNodes_+j) = dsigma_dE[i][j];
     }
-    total_cross_section_set_ = true;
     differential_cross_section_set_ = true;
     // RHS matrices depends on cross sections and now
     // need to be recalculated.
@@ -517,6 +517,7 @@ void nuFATE::AddAdditionalTerms(){
             }
         }
     } else if (newflavor_ == -1 and add_glashow_term_){
+
         set_glashow_total();
         set_glashow_partial();
 
@@ -535,12 +536,15 @@ void nuFATE::AddAdditionalTerms(){
           }
 
         } else{
+
+            std::cout << "sigma array[0] orig = " << sigma_array_[0] << std::endl;
             for (unsigned int i = 0; i < NumNodes_; i++){
               sigma_array_[i] = sigma_array_[i] + glashow_total_[i]/2.;
               for(unsigned int j=0; j<NumNodes_;j++){
                 *(RHSMatrix_.get() +i*NumNodes_+j) = *(RHSMatrix_.get() +i*NumNodes_+j) + *(glashow_partial_.get() + i*NumNodes_+j)/2.;
               }
             }
+            std::cout << "sigma array[0] mod = " << sigma_array_[0] << std::endl;
         }
     }
 }
@@ -589,6 +593,7 @@ Result nuFATE::getEigensystem(){
     if (RHS_set_ == false) {
        set_RHS_matrices(RHSMatrix_, dxs_array_);
        if (add_secondary_term_) {
+          std::cout << "AddAdditionalTerms will be called" << std::endl;
           AddAdditionalTerms();
        }
 
