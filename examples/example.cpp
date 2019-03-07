@@ -11,7 +11,7 @@ int main(){
 */
     int flavor = -2;
     double gamma = 2.2;
-    double pedestal_index = 2.0;
+    double scaling_index = 2.0; // don't change the value unless you change scaling_index manually in nufate object
     bool include_secondaries = false;
     std::string file = "../resources/NuFATECrossSections.h5";
 
@@ -61,8 +61,8 @@ int main(){
       for(int i=0; i<NumNodes; i++){
         double sum = 0.;
         for (int j=0; j<NumNodes;j++){
-          abs.push_back(ci[j] * exp(-t*eval[j]));
-          sum+= abs[j] *  *(evec.get()+i*NumNodes+j) * (std::pow(energy_nodes[i],-pedestal_index) / std::pow(energy_nodes[i],-gamma));
+          abs.push_back(ci[j] * exp(t*eval[j]));
+          sum+= abs[j] *  *(evec.get()+i*NumNodes+j) * (std::pow(energy_nodes[i],-scaling_index) / std::pow(energy_nodes[i],-gamma));
         }
         phi_sol.push_back(sum);
       }
