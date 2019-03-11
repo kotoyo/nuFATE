@@ -26,6 +26,13 @@
 
 namespace nufate{
 
+// gamma index to scale up the initial flux.
+// phi_0_ = initial_flux * E^(SCALING_INDEX)
+// According to Aaron, the value 2.0 broadly works
+// most of physics use, including atmospheric neutrino
+// spectrum and E^-2.X astrophysical flux.
+static const double SCALING_INDEX = 2.0;
+
 /// \struct Square_matrix_double
 /// \brief Very simple matrix struct used for pybinding.
 /// vec_ is the front address of a chank of double data,
@@ -183,12 +190,34 @@ class nuFATE {
     /// @return attenuation factor (arrival_flux / initial_flux), 1D array in energy bins
     std::vector<double> getRelativeAttenuation(double number_of_targets);
 
+    /// \brief Calculate arrival flux for a given energy.
+    /// this function may be used inside fitting loop.
+    /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
+    /// @param ene energy to get arrival flux, in GeV, 
+    /// @param start_i  used only when include_secondaries_ option is true. 0 for NuMu/NuE arrival flux, 1 for NuTau
+    /// @return arrival flux at given energy
+    double getArrivalFluxAt(double number_of_targets, double ene, unsigned int start_i=0);
+
+    /// \brief Function to set initial power law flux
+    /// @param gamma gamma index of power law
+    void setInitialPowerLawFlux(double gamma);
+    /// \brief Function to set initial user-defined flux. 
+    /// @param flux input energy flux at each energy node, must be same size as NumNodes_.
+    void setInitialFlux(const std::vector<double> &flux);
+    /// \brief Function to set scaling flux
+    /// Must be called before setInitialFlux or 
+    /// setInitialPowerLawFlux are called.
+    /// Do not modify the value unless you know well
+    /// about the parameter.
+    /// @param scaling_flux gamma factor of scaling flux
+    void setScalingFlux(double scaling_index);
+ 
+
   protected:
     void Init(double gamma, const std::vector<double> &enodes, const std::vector<double> &sigmas, const std::vector<std::vector<double> > &dsigma);
     void AddAdditionalTerms();
     void LoadCrossSectionFromHDF5();
     void SetCrossSectionsFromInput(const std::vector<double> &sigma, const std::vector<std::vector<double>> &dsigma_dE);
-    void SetInitialFlux();
     void set_glashow_total();
     void set_glashow_partial();
     void set_RHS_matrices(std::shared_ptr<double> RMatrix_, std::shared_ptr<double> dxs_array);
@@ -196,6 +225,7 @@ class nuFATE {
     double readDoubleAttribute(hid_t, std::string) const;
     unsigned int readUIntAttribute(hid_t, std::string) const;
     std::vector<double> logspace(double min,double max,unsigned int samples) const;
+
   private:
     void AllocateMemoryForMembers(unsigned int num_nodes);
     void SetEnergyBinWidths();
@@ -209,10 +239,13 @@ class nuFATE {
     double Emin_;
     int dxsdim_[2];
     std::vector<double> energy_nodes_;
+    std::vector<double> log10_energy_nodes_;
     std::vector<double> sigma_array_;
     std::vector<double> sigma_array_orig_;
     std::vector<double> DeltaE_;
     std::vector<double> phi_0_;
+    std::vector<double> phi_sol_;
+    std::vector<double> scaling_flux_;
     std::vector<double> glashow_total_;
     std::vector<double> sig3_array_;
     std::shared_ptr<double> glashow_partial_;
@@ -233,16 +266,33 @@ class nuFATE {
     std::shared_ptr<double> t1_;
     std::shared_ptr<double> t2_;
     std::shared_ptr<double> t3_;
+
+    // temporary buffers for eigensystem
+    gsl_vector_complex *eval_;
+    gsl_matrix_complex *evec_;
+    gsl_eigen_nonsymmv_workspace *w_;
+    gsl_vector *ci_;
+    gsl_permutation *p_;
+    gsl_matrix *V_;
+    Result r1_;
+
+    void allocate_gsl_buffers();
+    void free_gsl_buffers();
+
   private:
     bool include_secondaries_ = false;
     bool memory_allocated_ = false;
     bool initial_flux_set_ = false;
+    bool scaling_flux_set_ = false;
     bool total_cross_section_set_ = false;
     bool differential_cross_section_set_ = false;
     bool RHS_set_ = false;
+    bool eigenvalue_and_vector_set_ = false;
+    bool ci_set_ = false;
     bool add_tau_regeneration_ = true;
     bool add_glashow_term_= true;
     bool add_secondary_term_ = true;
+    double scaling_index_ = SCALING_INDEX; 
 };
 
 }

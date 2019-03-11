@@ -23,6 +23,7 @@
 #include <boost/python/scope.hpp>
 #include <boost/python/list.hpp>
 #include <boost/python/to_python_converter.hpp>
+#include "container_conversions.h"
 #include <boost/python/numpy.hpp>
 #include <boost/python/overloads.hpp>
 #include <nuFATE/nuFATE.h>
@@ -70,6 +71,8 @@ BOOST_PYTHON_MODULE(nuFATEpy)
 {
   to_python_converter< std::vector<double, class std::allocator<double> >, VecToList<double> > ();
   to_python_converter< Square_matrix_double, VecToList2D> ();
+  using namespace scitbx::boost_python::container_conversions;
+  from_python_sequence< std::vector<double>, variable_capacity_policy >();
 
   class_<Result>("Result")
     .def(init<>())
@@ -87,14 +90,17 @@ BOOST_PYTHON_MODULE(nuFATEpy)
     .def(init<int, double, std::string, std::string, std::string, bool>(args("flavor_id","gamma_index","cc_sigma_file","nc_sigma_file","nc_dsigma_dE_file","include_secondaries")))
     .def("get_eigensystem", &nuFATE::getEigensystem)
     .def("get_earth_column_density", &nuFATE::getEarthColumnDensity, arg("zenith"))
+    .def("get_relative_attenuation",&nuFATE::getRelativeAttenuation, arg("number_of_targets"))
+    .def("get_arrival_flux_at",&nuFATE::getArrivalFluxAt, args("number_of_targets","energy","start_i"))
     .def_readonly("flavor", &nuFATE::getFlavor)
     .def_readonly("gamma", &nuFATE::getGamma)
     .def_readonly("numnodes", &nuFATE::getNumNodes)
-    .def("set_add_secondaries",&nuFATE::setAddSecondaries, arg("opt"))
     .def("energy_nodes",&nuFATE::getEnergyNodes)
     .def("total_crosssections",&nuFATE::getTotalCrossSections)
     .def("nc_differential_crosssections",&nuFATE::getNCDifferentialCrossSections)
-    .def("get_relative_attenuation",&nuFATE::getRelativeAttenuation)
+    .def("set_add_secondaries",&nuFATE::setAddSecondaries, arg("opt"))
+    .def("set_initial_power_law_flux",&nuFATE::setInitialPowerLawFlux, arg("gamma"))
+    .def("set_initial_flux",&nuFATE::setInitialFlux, arg("flux"))
   ;
 
 }
