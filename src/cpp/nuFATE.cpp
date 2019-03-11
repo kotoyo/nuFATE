@@ -30,7 +30,7 @@ nuFATE::nuFATE(int flavor, double gamma, std::string h5_filename, bool include_s
     // load cross sections from file
     LoadCrossSectionFromHDF5();
     // set the initial flux
-    SetInitialFlux();
+    setInitialPowerLawFlux(newgamma_);
 }
 
 nuFATE::nuFATE(int flavor, double gamma, std::vector<double> energy_nodes, std::vector<double> sigma_array, std::vector<std::vector<double>> dsigma_dE, bool include_secondaries):
@@ -125,7 +125,7 @@ void nuFATE::Init(double gamma, const std::vector<double> &energy_nodes, const s
   Emin_ = energy_nodes_.front();
   AllocateMemoryForMembers(NumNodes_);
   SetEnergyBinWidths();
-  SetInitialFlux();
+  setInitialPowerLawFlux(newgamma_);
   SetCrossSectionsFromInput(sigma_array, dsigma_dE);
 }
 
@@ -431,7 +431,8 @@ void nuFATE::LoadCrossSectionFromHDF5(){
 
 }
 
-void nuFATE::SetInitialFlux(){
+void nuFATE::setInitialPowerLawFlux(double gamma){
+    newgamma_ = gamma;
     if(include_secondaries_){
       phi_0_ = std::vector<double>(2*NumNodes_);
       for (unsigned int i = 0; i < NumNodes_; i++){
@@ -446,6 +447,28 @@ void nuFATE::SetInitialFlux(){
         }
     }
 
+    initial_flux_set_ = true;
+}
+
+void nuFATE::setInitialFlux(const std::vector<double> &flux)
+{
+    if (flux.size() != NumNodes_) {
+        throw std::runtime_error("nuFATE::nuFATE number of energy nodes of input flux doesn't match with energy nodes of cross section.");
+    }
+
+    if(include_secondaries_){
+        phi_0_ = std::vector<double>(2*NumNodes_);
+        for (unsigned int i = 0; i < NumNodes_; i++){
+            phi_0_[i] = flux[i]*std::pow(energy_nodes_[i], 2);
+            phi_0_[i+NumNodes_] = phi_0_[i];
+        }
+
+    } else {
+        phi_0_ = std::vector<double>(NumNodes_);
+        for (unsigned int i = 0; i < NumNodes_; i++){
+            phi_0_[i] = flux[i]*std::pow(energy_nodes_[i], 2);
+        }
+    }
     initial_flux_set_ = true;
 }
 

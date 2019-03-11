@@ -183,12 +183,18 @@ class nuFATE {
     /// @return attenuation factor (arrival_flux / initial_flux), 1D array in energy bins
     std::vector<double> getRelativeAttenuation(double number_of_targets);
 
+    /// \brief Function to set initial power law flux
+    /// @param gamma gamma index of power law
+    void setInitialPowerLawFlux(double gamma);
+    /// \brief Function to set initial user-defined flux. 
+    /// @param flux input energy flux at each energy node, must be same size as NumNodes_.
+    void setInitialFlux(const std::vector<double> &flux);
+
   protected:
     void Init(double gamma, const std::vector<double> &enodes, const std::vector<double> &sigmas, const std::vector<std::vector<double> > &dsigma);
     void AddAdditionalTerms();
     void LoadCrossSectionFromHDF5();
     void SetCrossSectionsFromInput(const std::vector<double> &sigma, const std::vector<std::vector<double>> &dsigma_dE);
-    void SetInitialFlux();
     void set_glashow_total();
     void set_glashow_partial();
     void set_RHS_matrices(std::shared_ptr<double> RMatrix_, std::shared_ptr<double> dxs_array);
