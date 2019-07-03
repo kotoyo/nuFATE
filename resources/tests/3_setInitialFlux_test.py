@@ -60,7 +60,7 @@ print "set_initial_power_law_flux repeats : computing time %f sec" % (end_time2 
 
 #---------------------------
 # trial 3 
-# set_initial_power_low_flux
+# set_initial_flux
 #---------------------------
 
 energy_nodes = nufate.energy_nodes()

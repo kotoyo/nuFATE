@@ -518,16 +518,20 @@ void nuFATE::setInitialPowerLawFlux(double gamma)
 
     if(include_secondaries_){
 
+        initial_flux_ = std::vector<double>(2*NumNodes_);
         phi_0_ = std::vector<double>(2*NumNodes_);
         for (unsigned int i = 0; i < NumNodes_; i++){
-            phi_0_[i] = std::pow(energy_nodes_[i], -newgamma_) * scaling_flux_[i] ;
+            initial_flux_[i] = std::pow(energy_nodes_[i], -newgamma_);
+            phi_0_[i] = initial_flux_[i] * scaling_flux_[i] ;
             phi_0_[i+NumNodes_] = phi_0_[i];
         }
 
     } else {
+        initial_flux_ = std::vector<double>(NumNodes_);
         phi_0_ = std::vector<double>(NumNodes_);
         for (unsigned int i = 0; i < NumNodes_; i++){
-          phi_0_[i] = std::pow(energy_nodes_[i],- newgamma_) * scaling_flux_[i];
+            initial_flux_[i] = std::pow(energy_nodes_[i], -newgamma_);
+            phi_0_[i] = initial_flux_[i] * scaling_flux_[i];
         }
     }
 
@@ -539,11 +543,17 @@ void nuFATE::setInitialPowerLawFlux(double gamma)
 
 void nuFATE::setInitialFlux(const std::vector<double> &flux)
 {
+    if (initial_flux_set_ == true && initial_flux_ == flux) {
+        // if fluxes are already calculated, just return.
+        return;
+    }
+ 
     if (flux.size() != NumNodes_) {
         throw std::runtime_error("nuFATE::nuFATE number of energy nodes of input flux doesn't match with energy nodes of cross section.");
     }
 
     initial_flux_set_ = false;
+    initial_flux_ = flux;
 
     // size is OK. set phi_0_ vector.
     // prepare scaling flux.
@@ -805,10 +815,10 @@ std::vector<double> nuFATE::getRelativeAttenuation(double number_of_targets)
    return phi_sol_;
 }
 
-double nuFATE::getArrivalFluxAt(double number_of_targets, double ene, unsigned int start_i) 
+double nuFATE::getArrivalAt(double number_of_targets, double ene, bool isflux, unsigned int start_i) 
 {
    if (ene > Emax_ || ene < Emin_) 
-      throw std::runtime_error("nuFATE::getArrivalFluxAt input energy is out of range.");
+      throw std::runtime_error("nuFATE::getArrivalAt input energy is out of range.");
 
    // calculate eigensystem first
    getEigensystem();
@@ -846,10 +856,14 @@ double nuFATE::getArrivalFluxAt(double number_of_targets, double ene, unsigned i
       double sum = 0.;
       for (unsigned int j=0; j<rsize; j++){
          abs = r1_.ci[j] * exp(number_of_targets * r1_.eval[j]);
-         // arrval_flux = abs (dot) eigenvec / scaling_flux
          sum += abs *  *((r1_.evec).get()+i*rsize+j);
       }
-      arrival.push_back(sum / scaling_flux_[i]);
+
+      // isflux : true returns arrival flux, false returns relative attenuation
+      // sum : attenuation * primary_flux * scaling_flux, then
+      // arrival flux : sum / scaling_flux_[i] 
+      // relative attenuation : sum / r1_.phi_0_[i] because phi_0_ = primary_flux * scaling_flux
+      arrival.push_back((isflux) ? (sum / scaling_flux_[i]) : (sum / r1_.phi_0_[i]));
    }
 
    if (arrival.size() == 2) {
@@ -864,8 +878,18 @@ double nuFATE::getArrivalFluxAt(double number_of_targets, double ene, unsigned i
       return arrival[0];
    } 
 
-   throw std::runtime_error("nuFATE::getArrivalFluxAt linear interpolation failed!");
+   throw std::runtime_error("nuFATE::getArrivalAt linear interpolation failed!");
    return -1;
+}
+
+double nuFATE::getArrivalFluxAt(double number_of_targets, double ene, unsigned int start_i) 
+{
+   return getArrivalAt(number_of_targets, ene, true, start_i);
+}
+
+double nuFATE::getRelativeAttenuationAt(double number_of_targets, double ene, unsigned int start_i) 
+{
+   return getArrivalAt(number_of_targets, ene, false, start_i);
 }
 
 

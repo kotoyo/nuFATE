@@ -190,13 +190,35 @@ class nuFATE {
     /// @return attenuation factor (arrival_flux / initial_flux), 1D array in energy bins
     std::vector<double> getRelativeAttenuation(double number_of_targets);
 
-    /// \brief Calculate arrival flux for a given energy.
+  
+    /// \brief Calculate arrival parameters for a given energy.
     /// this function may be used inside fitting loop.
+    /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
+    /// @param ene energy to get arrival flux, in GeV, 
+    /// @param isflux true returns arrival flux. false returns relative attenuation.
+    /// @param start_i  used only when include_secondaries_ option is true. 0 for NuMu/NuE arrival flux, 1 for NuTau
+    /// @return arrival flux or attenuation at given energy
+    double getArrivalAt(double number_of_targets, double ene, bool isflux=false, unsigned int start_i=0);
+
+    /// \brief Calculate arrival flux for a given energy.
+    /// this is a wrapper function of getArrivalAt.
     /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
     /// @param ene energy to get arrival flux, in GeV, 
     /// @param start_i  used only when include_secondaries_ option is true. 0 for NuMu/NuE arrival flux, 1 for NuTau
     /// @return arrival flux at given energy
     double getArrivalFluxAt(double number_of_targets, double ene, unsigned int start_i=0);
+
+    /// \brief Calculate relative attenuation for a given energy.
+    /// this is a wrapper function of getArrivalAt.
+    /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
+    /// @param ene energy to get attenuation, in GeV, 
+    /// @param start_i  used only when include_secondaries_ option is true. 0 for NuMu/NuE arrival flux, 1 for NuTau
+    /// @return relative attenuation at given energy
+    double getRelativeAttenuationAt(double number_of_targets, double ene, unsigned int start_i=0);
+
+    /// \brief getter for initial flux
+    /// @return 1D vector
+    std::vector<double> getInitialFlux() { return initial_flux_; }
 
     /// \brief Function to set initial power law flux
     /// @param gamma gamma index of power law
@@ -243,6 +265,7 @@ class nuFATE {
     std::vector<double> sigma_array_;
     std::vector<double> sigma_array_orig_;
     std::vector<double> DeltaE_;
+    std::vector<double> initial_flux_;
     std::vector<double> phi_0_;
     std::vector<double> phi_sol_;
     std::vector<double> scaling_flux_;
