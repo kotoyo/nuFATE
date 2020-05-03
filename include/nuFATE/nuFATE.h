@@ -185,9 +185,22 @@ class nuFATE {
        return smatrix; 
     }
 
-    /// \brief Calculate Relative Attenuation 
+    /// \brief Calculate arrival parameters
     /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
-    /// @return attenuation factor (arrival_flux / initial_flux), 1D array in energy bins
+    /// @param isflux true returns arrival flux. false returns relative attenuation.
+    /// @return arrival flux or attenuation factor (arrival_flux / initial_flux), 1D array in energy bins
+    std::vector<double> getArrival(double number_of_targets, bool isflux=false);
+
+    /// \brief Calculate arrival flux
+    /// this is a wrapper function of getArrival.
+    /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
+    /// @return arrival flux
+    std::vector<double> getArrivalFlux(double number_of_targets);
+
+    /// \brief Calculate relative attenuation
+    /// this is a wrapper function of getArrival.
+    /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
+    /// @return relative attenuation 
     std::vector<double> getRelativeAttenuation(double number_of_targets);
 
   
@@ -215,6 +228,31 @@ class nuFATE {
     /// @param start_i  used only when include_secondaries_ option is true. 0 for NuMu/NuE arrival flux, 1 for NuTau
     /// @return relative attenuation at given energy
     double getRelativeAttenuationAt(double number_of_targets, double ene, unsigned int start_i=0);
+
+    /// \brief Calculate arrival parameters for given energies.
+    /// this function may be used inside fitting loop.
+    /// @param number_of_targets vector of total number of targets, X[g/cm^2]*Na(Avogadro number) for example
+    /// @param energies vector of energy to get arrival flux, in GeV, 
+    /// @param isflux true returns arrival flux. false returns relative attenuation.
+    /// @param start_i  used only when include_secondaries_ option is true. 0 for NuMu/NuE arrival flux, 1 for NuTau
+    /// @return arrival flux or attenuation at given energy
+    std::vector<double> getArrivalAtGivenEnergies(const std::vector<double> &number_of_targets, const std::vector<double> &energies, bool isflux=false, unsigned int start_i=0);
+
+    /// \brief Calculate arrival flux for a given energies.
+    /// this is a wrapper function of getArrivalAtGivenEnergies.
+    /// @param total number of targets, X[g/cm^2]*Na(Avogadro number) for example
+    /// @param ene energy to get arrival flux, in GeV, 
+    /// @param start_i  used only when include_secondaries_ option is true. 0 for NuMu/NuE arrival flux, 1 for NuTau
+    /// @return arrival flux at given energy
+    std::vector<double> getArrivalFluxAtGivenEnergies(const std::vector<double> &number_of_targets, const std::vector<double> &energies, unsigned int start_i=0);
+
+    /// \brief Calculate relative attenuation for a given energy.
+    /// this is a wrapper function of getArrivalAt.
+    /// @param number_of_targets vector of total number of targets, X[g/cm^2]*Na(Avogadro number) for example
+    /// @param energies vector of energy to get attenuation, in GeV, 
+    /// @param start_i  used only when include_secondaries_ option is true. 0 for NuMu/NuE arrival flux, 1 for NuTau
+    /// @return relative attenuation at given energy
+    std::vector<double> getRelativeAttenuationAtGivenEnergies(const std::vector<double> &number_of_targets, const std::vector<double> &energies, unsigned int start_i=0);
 
     /// \brief getter for initial flux
     /// @return 1D vector
@@ -268,6 +306,7 @@ class nuFATE {
     std::vector<double> initial_flux_;
     std::vector<double> phi_0_;
     std::vector<double> phi_sol_;
+    std::vector<double> arrival_flux_;
     std::vector<double> scaling_flux_;
     std::vector<double> glashow_total_;
     std::vector<double> sig3_array_;

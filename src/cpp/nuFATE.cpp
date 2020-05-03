@@ -3,6 +3,8 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
+#include "MemUsage.h"
+
 
 namespace nufate{
 
@@ -788,7 +790,7 @@ Result nuFATE::getEigensystem(){
 
 }
 
-std::vector<double> nuFATE::getRelativeAttenuation(double number_of_targets) 
+std::vector<double> nuFATE::getArrival(double number_of_targets, bool isflux) 
 {
    // calculate eigensystem first
    getEigensystem();
@@ -798,6 +800,7 @@ std::vector<double> nuFATE::getRelativeAttenuation(double number_of_targets)
       rsize = 2*NumNodes_;
    }
    phi_sol_.resize(rsize);
+   arrival_flux_.resize(rsize);
 
    double abs;
    for (unsigned int i=0; i<rsize; i++){
@@ -811,8 +814,19 @@ std::vector<double> nuFATE::getRelativeAttenuation(double number_of_targets)
          sum += abs *  *((r1_.evec).get()+i*rsize+j);
       }
       phi_sol_[i] = sum / r1_.phi_0_[i];
+      arrival_flux_[i] = sum / scaling_flux_[i];
    }
-   return phi_sol_;
+   return (isflux) ? arrival_flux_ : phi_sol_;
+}
+
+std::vector<double> nuFATE::getArrivalFlux(double number_of_targets) 
+{
+   return getArrival(number_of_targets, true);
+}
+
+std::vector<double> nuFATE::getRelativeAttenuation(double number_of_targets) 
+{
+   return getArrival(number_of_targets, false);
 }
 
 double nuFATE::getArrivalAt(double number_of_targets, double ene, bool isflux, unsigned int start_i) 
@@ -821,7 +835,9 @@ double nuFATE::getArrivalAt(double number_of_targets, double ene, bool isflux, u
       throw std::runtime_error("nuFATE::getArrivalAt input energy is out of range.");
 
    // calculate eigensystem first
+ 
    getEigensystem();
+   //MEM::PrintMem("nuFATE getArrivalAt getEigensystem called");
 
    unsigned int rsize = NumNodes_; 
    if (include_secondaries_) {
@@ -865,21 +881,35 @@ double nuFATE::getArrivalAt(double number_of_targets, double ene, bool isflux, u
       // relative attenuation : sum / r1_.phi_0_[i] because phi_0_ = primary_flux * scaling_flux
       arrival.push_back((isflux) ? (sum / scaling_flux_[i]) : (sum / r1_.phi_0_[i]));
    }
+   //MEM::PrintMem("nuFATE getArrivalAt got arrival");
 
    if (arrival.size() == 2) {
       // return linear interpolation.
       double lowphi = arrival[0];
       double highphi = arrival[1];
-      return (elog10 - elowlog10) / 
-             (ehighlog10 - elowlog10) *
-             (highphi - lowphi) + lowphi;
+      double dist = (elog10 - elowlog10) / (ehighlog10 - elowlog10);
+      arrival.clear();
+      //MEM::PrintMem("nuFATE getArrivalAt got dist");
+      return (1.-dist) * lowphi + dist * highphi;
 
    } else if (arrival.size() == 1) {
-      return arrival[0];
+      double ans = arrival[0];
+      arrival.clear();
+      return ans;
    } 
 
    throw std::runtime_error("nuFATE::getArrivalAt linear interpolation failed!");
    return -1;
+}
+
+std::vector<double> nuFATE::getArrivalAtGivenEnergies(const std::vector<double> &number_of_targets, const std::vector<double> &energies, bool isFlux,  unsigned int start_i) 
+{
+   std::vector<double> arrivals;
+   arrivals.resize(energies.size());
+   for (unsigned int i=0; i<energies.size(); ++i) {
+       arrivals[i] = getArrivalAt(number_of_targets[i], energies[i], isFlux, start_i);
+   }
+   return arrivals;
 }
 
 double nuFATE::getArrivalFluxAt(double number_of_targets, double ene, unsigned int start_i) 
@@ -892,6 +922,15 @@ double nuFATE::getRelativeAttenuationAt(double number_of_targets, double ene, un
    return getArrivalAt(number_of_targets, ene, false, start_i);
 }
 
+std::vector<double> nuFATE::getArrivalFluxAtGivenEnergies(const std::vector<double> &number_of_targets, const std::vector<double> &energies, unsigned int start_i) 
+{
+   return getArrivalAtGivenEnergies(number_of_targets, energies, true, start_i);
+}
+
+std::vector<double> nuFATE::getRelativeAttenuationAtGivenEnergies(const std::vector<double> &number_of_targets, const std::vector<double>& energies, unsigned int start_i) 
+{
+   return getArrivalAtGivenEnergies(number_of_targets, energies, false, start_i);
+}
 
 struct rho_earth_params{double theta;};
 
